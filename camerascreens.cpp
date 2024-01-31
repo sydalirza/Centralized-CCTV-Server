@@ -19,9 +19,25 @@ CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
     // Create a layout for the camera_viewer
     // QGridLayout *cameraLayout = ui->camera_viewer;
 
+    connect(ui->next_button, &QPushButton::clicked, this, &CameraScreens::onNextClicked);
+    connect(ui->previous_button, &QPushButton::clicked, this, &CameraScreens::onPreviousClicked);
+
     int numberOfConnectedCameras = getNumberOfConnectedCameras();
     // Initially load the camera layout with placeholders
-    updateCameraLayout(numberOfConnectedCameras, 4);
+    if (numberOfConnectedCameras <= 1)
+    {
+        updateCameraLayout(numberOfConnectedCameras, 1);
+    }
+    else if ( numberOfConnectedCameras > 1 && numberOfConnectedCameras <= 4)
+    {
+        updateCameraLayout(numberOfConnectedCameras, 4);
+    }
+    else
+    {
+        updateCameraLayout(numberOfConnectedCameras, 16);
+    }
+
+
 }
 
 CameraScreens::~CameraScreens()
@@ -43,7 +59,7 @@ void CameraScreens::openImage(int boxNumber)
 
 int CameraScreens::getNumberOfConnectedCameras()
 {
-    return 1;
+    return 0;
 }
 
 void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_screens)
@@ -59,7 +75,7 @@ void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_s
     int columns = (total_screens > 4) ? 4 : 2;
 
     // Load QLabel widgets for connected cameras
-    for (int i = 0; i < numberOfConnectedCameras; ++i) {
+    for (int i = 0; i < total_screens; ++i) {
         CustomLabel *imageLabel = new CustomLabel(this);
         QPixmap imagePixmap("E:/FYP/image1.png"); // Placeholder for connected cameras
 
@@ -94,6 +110,10 @@ void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_s
 
         connect(imageLabel, &CustomLabel::doubleClicked, this, &CameraScreens::onImageDoubleClicked);
     }
+
+
+    ui->previous_button->setVisible(total_screens < numberOfConnectedCameras);
+    ui->next_button->setVisible(total_screens < numberOfConnectedCameras);
 
 
 }
@@ -131,7 +151,6 @@ void CameraScreens::on_sixteen_camera_clicked()
 void CameraScreens::onImageClicked()
 {
 
-    qDebug() << "Single Click Detected!";
     CustomLabel *clickedLabel = qobject_cast<CustomLabel*>(sender());
 
     if (clickedLabel && clickedLabel != lastClickedLabel) {
@@ -167,6 +186,16 @@ void CameraScreens::onImageDoubleClicked()
             tabWidget->setCurrentIndex(newIndex);
         }
     }
+}
+
+void CameraScreens::onNextClicked()
+{
+
+}
+
+void CameraScreens::onPreviousClicked()
+{
+
 }
 
 

@@ -31,6 +31,10 @@ private slots:
 
     void onImageDoubleClicked();
 
+    void onNextClicked();
+
+    void onPreviousClicked();
+
 private:
     Ui::CameraScreens *ui;
 
@@ -45,6 +49,10 @@ private:
 
     SingleViewWidget *singleViewWidget = nullptr;
     QWidget* parentWidget;
+
+    int totalWalls = 1; // Set an initial value, adjust as needed
+    int currentWall = 0; // Set an initial value, adjust as needed
+    int camerasPerWall = 4; // Set an initial value, adjust as needed
 };
 
 #endif // CAMERASCREENS_H
