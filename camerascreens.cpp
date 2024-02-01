@@ -45,18 +45,6 @@ CameraScreens::~CameraScreens()
     delete ui;
 }
 
-void CameraScreens::openImage(int boxNumber)
-{
-    // Open an image using QFileDialog
-    QString imagePath = QFileDialog::getOpenFileName(this, "Open Image", QDir::homePath(), "Images (*.png *.jpg *.bmp)");
-
-    if (!imagePath.isEmpty()) {
-        // You can do something with the image path, for example, display it in a QLabel
-        // For simplicity, let's show the image path in a message box
-        QMessageBox::information(this, "Image Path", "Image path for Box " + QString::number(boxNumber) + ": " + imagePath);
-    }
-}
-
 int CameraScreens::getNumberOfConnectedCameras()
 {
     return 0;

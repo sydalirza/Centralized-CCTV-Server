@@ -5,6 +5,7 @@
 #include <QMessageBox>
 #include "customlabel.h"
 #include "singleviewwidget.h"
+#include "camerahandler.h"
 
 namespace Ui {
 class CameraScreens;
@@ -19,7 +20,7 @@ public:
     ~CameraScreens();
 
 private slots:
-    void openImage(int boxNumber);
+
 
     void on_one_camera_clicked();
 
@@ -53,6 +54,11 @@ private:
     int totalWalls = 1; // Set an initial value, adjust as needed
     int currentWall = 0; // Set an initial value, adjust as needed
     int camerasPerWall = 4; // Set an initial value, adjust as needed
+
+    QVector<QLabel*> cameraLabels;  // Keep track of the QLabel widgets
+    CameraHandler cameraHandler;    // Instance of CameraHandler
+
+    void addCameraLabel();
 };
 
 #endif // CAMERASCREENS_H
