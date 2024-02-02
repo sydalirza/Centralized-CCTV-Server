@@ -46,3 +46,6 @@ else:unix: LIBS += -L$$PWD/../OpenCV/opencv/build/x64/vc16/lib/ -lopencv_world48
 INCLUDEPATH += $$PWD/../OpenCV/opencv/build/include
 DEPENDPATH += $$PWD/../OpenCV/opencv/build/include
 
+DISTFILES += \
+    error.png
+

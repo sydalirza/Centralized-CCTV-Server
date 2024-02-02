@@ -1,68 +1,16 @@
-// CameraHandler.cpp
-#include "CameraHandler.h"
-#include <opencv2/opencv.hpp>
+#include "camerahandler.h"
 #include <QDebug>
+#include <QImageReader>
 
-using namespace cv;
 
-CameraHandler::CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this))
+CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this))
 {
-    connect(timer, &QTimer::timeout, this, &CameraHandler::updateFrame);
-    timer->start(33);  // Update every 33 milliseconds (approximately 30 FPS)
+    connect(timer, &QTimer::timeout, this, &CameraHandler::updateFrames);
+    timer->start(33);
 }
 
-CameraHandler::~CameraHandler()
-{
+CameraHandler:: ~CameraHandler(){
     closeAllCameras();
-}
-
-void CameraHandler::openCamera(const std::string& cameraUrl, const QString& cameraName)
-{
-    // Check if the camera is already open
-    for (const auto &camera : cameras)
-    {
-        if (camera.cameraName == cameraName)
-        {
-            qDebug() << "Camera " << cameraName << " is already open.";
-            return;
-        }
-    }
-
-    // Open the camera using OpenCV
-    VideoCapture videoCapture(cameraUrl);
-    if (!videoCapture.isOpened())
-    {
-        qDebug() << "Error opening camera " << cameraName;
-        return;
-    }
-
-    // Create a new CameraInfo structure
-    CameraInfo newCamera;
-    newCamera.videoCapture = videoCapture;
-    newCamera.cameraName = cameraName;
-
-    // Add the new camera to the list
-    cameras.push_back(newCamera);
-}
-
-void CameraHandler::updateFrame()
-{
-    for (auto &camera : cameras)
-    {
-        // Read frame from the camera
-        Mat frame;
-        camera.videoCapture.read(frame);
-
-        if (frame.empty())
-        {
-            qDebug() << "Error reading frame from camera " << camera.cameraName;
-            emit frameUpdated(frame, camera.cameraName);
-            return;
-        }
-
-        // Emit signal with the updated frame and camera name
-        emit frameUpdated(frame, camera.cameraName);
-    }
 }
 
 void CameraHandler::closeAllCameras()
@@ -73,4 +21,88 @@ void CameraHandler::closeAllCameras()
     }
 
     cameras.clear();
+}
+
+void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameraname)
+{
+    for (auto& camera: cameras)
+    {
+        if(camera.cameraname == cameraname)
+        {
+        qDebug() << "Camera" << cameraname << " already open!";
+        return;
+    }
+    }
+
+    VideoCapture videoCapture(cameraUrl);
+    if(!videoCapture.isOpened())
+    {
+        qDebug() << "Error opening Camera" << cameraname;
+        return;
+    }
+
+    CameraInfo newcamera;
+    newcamera.videoCapture = videoCapture;
+    newcamera.cameraname = cameraname;
+
+    cameras.push_back(newcamera);
+}
+
+void CameraHandler::CloseCamera(const QString &cameraname)
+{
+    cameras.erase(remove_if(cameras.begin(), cameras.end(), [cameraname](const CameraInfo &camera)
+    {
+        return camera.cameraname == cameraname;
+                            }),cameras.end());
+}
+
+const QImage &CameraHandler::getLatestFrame(const QString &cameraname) const
+{
+    auto it = find_if(cameras.begin(), cameras.end(), [cameraname](const CameraInfo &camera){
+        return camera.cameraname == cameraname;
+    });
+    if(it != cameras.end())
+    {
+        return it-> latestFrame;
+    }
+
+    static QImage errorFrame;
+    QImageReader image("error.png");
+    errorFrame = image.read();
+    return errorFrame;
+}
+
+void CameraHandler::updateFrames()
+{
+    for(auto &camera: cameras)
+    {
+        Mat frame;
+        camera.videoCapture.read(frame);
+
+        if(frame.empty())
+        {
+            qDebug() << "Error reading frame from " << camera.cameraname;
+            continue;
+        }
+        camera.latestFrame = matToImage(frame);
+
+        emit frameupdated(camera.latestFrame, camera.cameraname);
+    }
+}
+
+QImage CameraHandler::matToImage(const Mat &mat) const
+{
+    if (mat.channels() == 3)
+    {
+        QImage image(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_RGB888);
+        return image.rgbSwapped();
+    }
+
+    else if(mat.channels() == 1)
+    {
+        return QImage(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_Grayscale8);
+    }
+
+    qDebug() << "Unsupported Image Format";
+    return QImage();
 }
