@@ -23,9 +23,11 @@ public:
     void closeAllCameras();
 
     const QImage& getLatestFrame(const QString &cameraname) const;
+    int getNumberOfConnectedCameras() const;
+    QString getCameraName(int index) const;
 
 signals:
-    void frameupdated(const QImage& frame, const QString& cameraname);
+    void frameUpdated(const QImage& frame, const QString& cameraname);
 
 private slots:
     void updateFrames();

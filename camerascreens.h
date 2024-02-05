@@ -36,6 +36,8 @@ private slots:
 
     void onPreviousClicked();
 
+    void handleFrameUpdate(const QImage &frame, const QString &cameraname);
+
 private:
     Ui::CameraScreens *ui;
 
@@ -57,8 +59,9 @@ private:
 
     QVector<QLabel*> cameraLabels;  // Keep track of the QLabel widgets
     CameraHandler cameraHandler;    // Instance of CameraHandler
+    QMap<QString, CustomLabel*> cameraLabelMap;
 
-    void addCameraLabel();
+    void addCameraLabel(const QString &cameraname, int total_screens, int i);
 };
 
 #endif // CAMERASCREENS_H

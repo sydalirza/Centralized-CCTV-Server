@@ -7,6 +7,16 @@ CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTim
 {
     connect(timer, &QTimer::timeout, this, &CameraHandler::updateFrames);
     timer->start(33);
+
+    // OpenCamera("rtsp://192.168.1.3:8080/h264.sdp", "Camera 1");
+
+    OpenCamera("C:/Users/Yousuf Traders/Downloads/1.mp4", "Camera 2");
+
+    OpenCamera("C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 3");
+
+    OpenCamera("C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 4");
+
+    OpenCamera("C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 5");
 }
 
 CameraHandler:: ~CameraHandler(){
@@ -86,7 +96,7 @@ void CameraHandler::updateFrames()
         }
         camera.latestFrame = matToImage(frame);
 
-        emit frameupdated(camera.latestFrame, camera.cameraname);
+        emit frameUpdated(camera.latestFrame, camera.cameraname);
     }
 }
 
@@ -105,4 +115,17 @@ QImage CameraHandler::matToImage(const Mat &mat) const
 
     qDebug() << "Unsupported Image Format";
     return QImage();
+}
+
+int CameraHandler::getNumberOfConnectedCameras() const
+{
+    return cameras.size();
+}
+
+QString CameraHandler::getCameraName(int index) const
+{
+    if (index >= 0 && index < cameras.size())
+        return cameras.at(index).cameraname;
+    else
+        return QString(); // or some default value for invalid index
 }

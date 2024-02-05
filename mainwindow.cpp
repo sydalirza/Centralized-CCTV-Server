@@ -24,7 +24,6 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     openDefaultTab();
     setFixedSize(QGuiApplication::primaryScreen()->availableSize());
-
 }
 
 MainWindow::~MainWindow()
