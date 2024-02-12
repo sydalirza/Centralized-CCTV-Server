@@ -9,6 +9,8 @@
 #include <QPixmap>
 #include <QLabel>
 #include <QTabWidget>
+#include <QThread>
+#include <QTimer>
 #include "singleviewwidget.h"
 
 CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
@@ -19,8 +21,33 @@ CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
     connect(ui->next_button, &QPushButton::clicked, this, &CameraScreens::onNextClicked);
     connect(ui->previous_button, &QPushButton::clicked, this, &CameraScreens::onPreviousClicked);
 
+    updateCameraLayout(16, camerasPerWall); // Blank
+
+    timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, &CameraScreens::initialize);
+    timer->start(1000);
+
+    connect(ui->addcamerabutton, &QPushButton::clicked, this, [this](){
+        // Replace "C:/Users/Yousuf Traders/Downloads/1.mp4" and "Camera 2" with appropriate values
+        addCamera("C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 2");
+    });
+
+}
+
+// Implementation of the initialization slot
+void CameraScreens::initialize()
+{
+    qDebug() << "here";
+    // Disconnect the signal to avoid repeated calls
+    disconnect(timer, &QTimer::timeout, this, &CameraScreens::initialize);
+
+    // Call the connectCameras function here
+    connectCameras();
+
+    // Continue with the rest of your initialization code
     int numberOfConnectedCameras = cameraHandler.getNumberOfConnectedCameras();
     qDebug() << "Number: " << numberOfConnectedCameras;
+    showLayoutButtons(numberOfConnectedCameras);
     updateCameraLayout(numberOfConnectedCameras, camerasPerWall);
 
     // Connect CameraHandler's signal to handleFrameUpdate slot
@@ -31,18 +58,6 @@ CameraScreens::~CameraScreens()
 {
     delete ui;
 }
-
-// void CameraScreens::openImage(int boxNumber)
-// {
-//     // Open an image using QFileDialog
-//     QString imagePath = QFileDialog::getOpenFileName(this, "Open Image", QDir::homePath(), "Images (*.png *.jpg *.bmp)");
-
-//     if (!imagePath.isEmpty()) {
-//         // You can do something with the image path, for example, display it in a QLabel
-//         // For simplicity, let's show the image path in a message box
-//         QMessageBox::information(this, "Image Path", "Image path for Box " + QString::number(boxNumber) + ": " + imagePath);
-//     }
-// }
 
 void CameraScreens::on_one_camera_clicked()
 {
@@ -102,10 +117,24 @@ void CameraScreens::onPreviousClicked()
 
 void CameraScreens::handleFrameUpdate(const QImage& frame, const QString& cameraName)
 {
-    // Update the label with the new frame
+    // Update the label with the new frame or set it to a black pixmap if it's an error frame
     if (cameraLabelMap.contains(cameraName)) {
         CustomLabel* label = cameraLabelMap.value(cameraName);
-        label->setPixmap(QPixmap::fromImage(frame));
+
+        if (label) {
+            // Check if the frame has an error
+            if (cameraHandler.getCameraError(cameraName)) {
+                // Create a black image
+                QImage errorImage(frame.width(), frame.height(), QImage::Format_RGB32);
+                errorImage.fill(Qt::red);
+
+                // Set the label pixmap with the black image
+                label->setPixmap(QPixmap::fromImage(errorImage));
+            } else {
+                // Set the label pixmap with the received frame
+                label->setPixmap(QPixmap::fromImage(frame));
+            }
+        }
     }
 }
 
@@ -119,9 +148,16 @@ void CameraScreens::addCameraLabel(const QString& cameraName, int total_screens,
     cameraLabelMap.insert(cameraName, imageLabel);
 
     QPixmap imagePixmap("error.png");
+    QPixmap blackPixmap(540, 330);  // Create a black pixmap with the desired size
+    blackPixmap.fill(Qt::black);
 
-    // Set the initial pixmap (you can set a placeholder here)
-    imageLabel->setPixmap(imagePixmap.scaled(540, 330, Qt::KeepAspectRatioByExpanding));
+    if (i < cameraHandler.getNumberOfConnectedCameras()) {
+        // Connected camera: Set the pixmap
+        imageLabel->setPixmap(imagePixmap.scaled(540, 330, Qt::KeepAspectRatioByExpanding));
+    } else {
+        // Not connected camera: Set a black background
+        imageLabel->setPixmap(blackPixmap);
+    }
 
     // Enable scaled contents to fill the available space
     imageLabel->setScaledContents(true);
@@ -166,3 +202,37 @@ void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_s
     ui->next_button->setVisible(total_screens < numberOfConnectedCameras);
 }
 
+void CameraScreens::showLayoutButtons(int numberofConnectedCameras)
+{
+    if(numberofConnectedCameras > 1)
+    {
+        ui->one_camera->setEnabled(false);
+    }
+    else if(numberofConnectedCameras > 4)
+    {
+        ui->four_camera->setEnabled(false);
+    }
+}
+
+void CameraScreens::connectCameras()
+{
+    qDebug() << "Connecting Cameras";
+
+    // Connect signals and slots
+    cameraHandler.OpenCamera("C:/Users/Yousuf Traders/Downloads/1.mp4", "Camera 1");
+
+    connect(&cameraHandler, &CameraHandler::frameUpdated, this, &CameraScreens::handleFrameUpdate);
+}
+
+void CameraScreens::addCamera(const QString& cameraUrl, const QString& cameraName)
+{
+    qDebug() << "Adding Camera: " << cameraName;
+
+    // Open the new camera
+    cameraHandler.OpenCamera(cameraUrl.toStdString(), cameraName);
+
+    // Update the UI with the new camera
+    int numberOfConnectedCameras = cameraHandler.getNumberOfConnectedCameras();
+    showLayoutButtons(numberOfConnectedCameras);
+    updateCameraLayout(numberOfConnectedCameras, camerasPerWall);
+}

@@ -25,6 +25,7 @@ public:
     const QImage& getLatestFrame(const QString &cameraname) const;
     int getNumberOfConnectedCameras() const;
     QString getCameraName(int index) const;
+    bool getCameraError(const QString& cameraname) const;
 
 signals:
     void frameUpdated(const QImage& frame, const QString& cameraname);
@@ -37,12 +38,13 @@ private:
         VideoCapture videoCapture;
         QString cameraname;
         QImage latestFrame;
+        string cameraUrl;
+        bool isError = true;
     };
 
     QTimer* timer;
     QVector<CameraInfo> cameras;
-
-
+    bool attemptReconnect(CameraInfo &camera);
     QImage matToImage(const Mat &mat) const;
 };
 
