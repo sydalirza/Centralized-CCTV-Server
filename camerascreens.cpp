@@ -25,11 +25,16 @@ CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
 
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &CameraScreens::initialize);
-    timer->start(1000);
+    timer->start(5000);
 
     connect(ui->addcamerabutton, &QPushButton::clicked, this, [this](){
         // Replace "C:/Users/Yousuf Traders/Downloads/1.mp4" and "Camera 2" with appropriate values
-        addCamera("C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 2");
+        addCamera("C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 3");
+    });
+
+    connect(ui->closecamerabutton, &QPushButton::clicked, this, [this](){
+        // Replace "Camera 1" with the camera name you want to remove
+        removeCamera("Camera 2");
     });
 
 }
@@ -153,8 +158,9 @@ void CameraScreens::addCameraLabel(const QString& cameraName, int total_screens,
 
     if (i < cameraHandler.getNumberOfConnectedCameras()) {
         // Connected camera: Set the pixmap
-        imageLabel->setPixmap(imagePixmap.scaled(540, 330, Qt::KeepAspectRatioByExpanding));
-    } else {
+        imageLabel->setPixmap(imagePixmap.scaled(540, 330, Qt::IgnoreAspectRatio));
+    }
+    else {
         // Not connected camera: Set a black background
         imageLabel->setPixmap(blackPixmap);
     }
@@ -212,6 +218,14 @@ void CameraScreens::showLayoutButtons(int numberofConnectedCameras)
     {
         ui->four_camera->setEnabled(false);
     }
+    else if(numberofConnectedCameras == 1 && !(ui->one_camera->isEnabled()))
+    {
+        ui->one_camera->setEnabled(true);
+    }
+    else if(numberofConnectedCameras < 4 && !(ui->four_camera->isEnabled()))
+    {
+        ui->one_camera->setEnabled(true);
+    }
 }
 
 void CameraScreens::connectCameras()
@@ -220,6 +234,8 @@ void CameraScreens::connectCameras()
 
     // Connect signals and slots
     cameraHandler.OpenCamera("C:/Users/Yousuf Traders/Downloads/1.mp4", "Camera 1");
+    cameraHandler.OpenCamera("C:/Users/Yousuf Traders/Downloads/3.mp4", "Camera 2");
+
 
     connect(&cameraHandler, &CameraHandler::frameUpdated, this, &CameraScreens::handleFrameUpdate);
 }
@@ -233,6 +249,20 @@ void CameraScreens::addCamera(const QString& cameraUrl, const QString& cameraNam
 
     // Update the UI with the new camera
     int numberOfConnectedCameras = cameraHandler.getNumberOfConnectedCameras();
+    showLayoutButtons(numberOfConnectedCameras);
+    updateCameraLayout(numberOfConnectedCameras, camerasPerWall);
+}
+
+void CameraScreens::removeCamera(const QString& cameraName)
+{
+    qDebug() << "Removing Camera: " << cameraName;
+
+    // Close the camera
+    cameraHandler.CloseCamera(cameraName);
+
+    // Update the UI after removing the camera
+    int numberOfConnectedCameras = cameraHandler.getNumberOfConnectedCameras();
+    qDebug() << "Number: " << numberOfConnectedCameras;
     showLayoutButtons(numberOfConnectedCameras);
     updateCameraLayout(numberOfConnectedCameras, camerasPerWall);
 }

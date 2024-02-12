@@ -22,6 +22,7 @@ public:
 
 public slots:
     void addCamera(const QString& cameraUrl, const QString& cameraName);
+    void removeCamera(const QString& cameraName);
 
 private slots:
 
