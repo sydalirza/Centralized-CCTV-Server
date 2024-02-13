@@ -25,11 +25,11 @@ CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
 
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &CameraScreens::initialize);
-    timer->start(5000);
+    timer->start(500);
 
     connect(ui->addcamerabutton, &QPushButton::clicked, this, [this](){
         // Replace "C:/Users/Yousuf Traders/Downloads/1.mp4" and "Camera 2" with appropriate values
-        addCamera("C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 3");
+        addCamera("rtsp://192.168.1.2:8080/h264.sdp", "Camera 5");
     });
 
     connect(ui->closecamerabutton, &QPushButton::clicked, this, [this](){
@@ -42,7 +42,6 @@ CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
 // Implementation of the initialization slot
 void CameraScreens::initialize()
 {
-    qDebug() << "here";
     // Disconnect the signal to avoid repeated calls
     disconnect(timer, &QTimer::timeout, this, &CameraScreens::initialize);
 
@@ -66,16 +65,19 @@ CameraScreens::~CameraScreens()
 
 void CameraScreens::on_one_camera_clicked()
 {
+    currentWall = 1;
     updateCameraLayout(cameraHandler.getNumberOfConnectedCameras(), 1);
 }
 
 void CameraScreens::on_four_camera_clicked()
 {
+    currentWall = 4;
     updateCameraLayout(cameraHandler.getNumberOfConnectedCameras(), 4);
 }
 
 void CameraScreens::on_sixteen_camera_clicked()
 {
+    currentWall = 16;
     updateCameraLayout(cameraHandler.getNumberOfConnectedCameras(), 16);
 }
 
@@ -90,6 +92,12 @@ void CameraScreens::onImageClicked()
 
         clickedLabel->setStyleSheet("border: 2px solid red;");
         lastClickedLabel = clickedLabel;
+
+        // Retrieve the camera name associated with the clicked label
+        QString cameraName = cameraLabelMap.key(clickedLabel);
+
+        // Print the name of the clicked camera
+        qDebug() << "Clicked Camera: " << cameraName;
     }
 }
 
@@ -98,13 +106,22 @@ void CameraScreens::onImageDoubleClicked()
     CustomLabel* doubleClickedLabel = qobject_cast<CustomLabel*>(sender());
 
     if (doubleClickedLabel && parentWidget && doubleClickedLabel == lastClickedLabel) {
-        singleViewWidget = new SingleViewWidget(parentWidget);
+        // Retrieve the camera name associated with the double-clicked label
+        QString cameraName = cameraLabelMap.key(doubleClickedLabel);
+        string singlecameraUrl = cameraHandler.getCameraUrl(cameraName);
 
-        singleViewWidget->loadImage(doubleClickedLabel->pixmap());
+        if(cameraHandler.getCameraError(cameraName))
+        {
+            qDebug() << cameraName << " is disconnected";
+            return;
+        }
+
+        // Create a new singleViewWidget for the camera
+        singleViewWidget = new SingleViewWidget(parentWidget, cameraName, singlecameraUrl);
 
         QTabWidget* tabWidget = parentWidget->findChild<QTabWidget*>("tabWidget");
         if (tabWidget) {
-            int newIndex = tabWidget->addTab(singleViewWidget, "Single View");
+            int newIndex = tabWidget->addTab(singleViewWidget, cameraName);
             tabWidget->setCurrentIndex(newIndex);
         }
     }
@@ -130,11 +147,11 @@ void CameraScreens::handleFrameUpdate(const QImage& frame, const QString& camera
             // Check if the frame has an error
             if (cameraHandler.getCameraError(cameraName)) {
                 // Create a black image
-                QImage errorImage(frame.width(), frame.height(), QImage::Format_RGB32);
-                errorImage.fill(Qt::red);
+                QImage errorImage("E:/FYP/image.png"); //Camera gets disconnected
 
                 // Set the label pixmap with the black image
                 label->setPixmap(QPixmap::fromImage(errorImage));
+
             } else {
                 // Set the label pixmap with the received frame
                 label->setPixmap(QPixmap::fromImage(frame));
@@ -152,13 +169,14 @@ void CameraScreens::addCameraLabel(const QString& cameraName, int total_screens,
     CustomLabel* imageLabel = new CustomLabel(this);
     cameraLabelMap.insert(cameraName, imageLabel);
 
-    QPixmap imagePixmap("error.png");
+    QPixmap defaultPixmap("E:/FYP/image1.png"); // Default
     QPixmap blackPixmap(540, 330);  // Create a black pixmap with the desired size
     blackPixmap.fill(Qt::black);
 
+
     if (i < cameraHandler.getNumberOfConnectedCameras()) {
         // Connected camera: Set the pixmap
-        imageLabel->setPixmap(imagePixmap.scaled(540, 330, Qt::IgnoreAspectRatio));
+        imageLabel->setPixmap(defaultPixmap.scaled(540, 330, Qt::IgnoreAspectRatio));
     }
     else {
         // Not connected camera: Set a black background
@@ -187,6 +205,18 @@ void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_s
     }
 
     lastClickedLabel = nullptr;
+
+    if (total_screens < numberOfConnectedCameras)
+    {
+        if(total_screens == 1 && numberOfConnectedCameras <= 4 && numberOfConnectedCameras > 1)
+        {
+            total_screens = 4;
+        }
+        else if(total_screens == 4 && numberOfConnectedCameras <= 16 && numberOfConnectedCameras > 4)
+        {
+            total_screens = 16;
+        }
+    }
 
     // Load QLabel widgets for connected cameras
     int boxNumber = 1;
@@ -232,12 +262,27 @@ void CameraScreens::connectCameras()
 {
     qDebug() << "Connecting Cameras";
 
-    // Connect signals and slots
-    cameraHandler.OpenCamera("C:/Users/Yousuf Traders/Downloads/1.mp4", "Camera 1");
-    cameraHandler.OpenCamera("C:/Users/Yousuf Traders/Downloads/3.mp4", "Camera 2");
+    // Array of camera details (URL and name)
+    const std::vector<std::pair<QString, QString>> cameras = {
+                                                              {"C:/Users/Yousuf Traders/Downloads/1.mp4", "Camera 1"},
+                                                              {"C:/Users/Yousuf Traders/Downloads/3.mp4", "Camera 2"},
+                                                              {"C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 3"},
+                                                              {"rtsp://192.168.1.2:8080/h264.sdp", "Camera 4"},
+
+                                                              };
 
 
+    connect(&cameraHandler, &CameraHandler::cameraOpened, this, &CameraScreens::handleCameraOpened);
+    connect(&cameraHandler, &CameraHandler::cameraOpeningFailed, this, &CameraScreens::handleCameraOpeningFailed);
     connect(&cameraHandler, &CameraHandler::frameUpdated, this, &CameraScreens::handleFrameUpdate);
+
+    // Add cameras using a loop
+    for (const auto &camera : cameras)
+    {
+        addCamera(camera.first, camera.second);
+    }
+
+    cameraHandler.printConnectedCameras();
 }
 
 void CameraScreens::addCamera(const QString& cameraUrl, const QString& cameraName)
@@ -246,12 +291,8 @@ void CameraScreens::addCamera(const QString& cameraUrl, const QString& cameraNam
 
     // Open the new camera
     cameraHandler.OpenCamera(cameraUrl.toStdString(), cameraName);
-
-    // Update the UI with the new camera
-    int numberOfConnectedCameras = cameraHandler.getNumberOfConnectedCameras();
-    showLayoutButtons(numberOfConnectedCameras);
-    updateCameraLayout(numberOfConnectedCameras, camerasPerWall);
 }
+
 
 void CameraScreens::removeCamera(const QString& cameraName)
 {
@@ -262,7 +303,23 @@ void CameraScreens::removeCamera(const QString& cameraName)
 
     // Update the UI after removing the camera
     int numberOfConnectedCameras = cameraHandler.getNumberOfConnectedCameras();
-    qDebug() << "Number: " << numberOfConnectedCameras;
     showLayoutButtons(numberOfConnectedCameras);
-    updateCameraLayout(numberOfConnectedCameras, camerasPerWall);
+    updateCameraLayout(numberOfConnectedCameras, currentWall);
+    cameraHandler.printConnectedCameras();
 }
+
+void CameraScreens::handleCameraOpened()
+{
+    int numberOfConnectedCameras = cameraHandler.getNumberOfConnectedCameras();
+    showLayoutButtons(numberOfConnectedCameras);
+    updateCameraLayout(numberOfConnectedCameras, currentWall);
+    cameraHandler.printConnectedCameras();
+}
+
+// Slot to handle camera opening failure
+void CameraScreens::handleCameraOpeningFailed(const QString &cameraName)
+{
+    // Handle camera opening failure, if needed
+    qDebug() << "Camera opening attempt failed for " << cameraName;
+}
+

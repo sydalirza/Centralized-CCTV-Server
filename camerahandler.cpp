@@ -7,7 +7,7 @@
 CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this))
 {
     connect(timer, &QTimer::timeout, this, &CameraHandler::updateFrames);
-    timer->start(100); //FPS
+    timer->start(33); //FPS
 }
 
 CameraHandler:: ~CameraHandler(){
@@ -26,13 +26,69 @@ void CameraHandler::closeAllCameras()
 
 void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameraname)
 {
+    for (const auto& camera : cameras)
+    {
+        if (camera.cameraname == cameraname)
+        {
+            qDebug() << "Camera" << cameraname << " already open!";
+            return;
+        }
+    }
+
+    // Disconnect any existing connections for the current camera
+    QObject::disconnect(&openTimer, &QTimer::timeout, nullptr, nullptr);
+
+    openTimer.setSingleShot(true);
+
+    // Connect the timer timeout to a lambda function for camera opening attempt
+    QObject::connect(&openTimer, &QTimer::timeout, [this, cameraUrl, cameraname]() {
+        // Attempt to open the camera
+        VideoCapture videoCapture(cameraUrl);
+        if (videoCapture.isOpened()) {
+            CameraInfo newcamera;
+            newcamera.videoCapture = videoCapture;
+            newcamera.cameraname = cameraname;
+            newcamera.cameraUrl = cameraUrl;
+
+            qDebug() << "Opening " << cameraname;
+
+            cameras.push_back(newcamera);
+        }
+    });
+
+    // Start the timer with a timeout (adjust the timeout value as needed)
+    openTimer.start(500);  // 5000 milliseconds (5 seconds)
+
+    // Wait for the timer to finish
+    while (openTimer.isActive()) {
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+    }
+
+    // Check if the camera was opened
+    for (const auto& camera : cameras)
+    {
+        if (camera.cameraname == cameraname)
+        {
+            return; // Camera was opened
+        }
+    }
+
+    // Timeout reached, assume camera opening failed
+    qDebug() << "Camera opening attempt timed out." << cameraname << "1 ";
+
+
+}
+
+
+void CameraHandler::OpenCamera_single(const string &cameraUrl, const QString &cameraname)
+{
     for (auto& camera: cameras)
     {
         if(camera.cameraname == cameraname)
         {
-        qDebug() << "Camera" << cameraname << " already open!";
-        return;
-    }
+            qDebug() << "Camera" << cameraname << " already open!";
+            return;
+        }
     }
 
     VideoCapture videoCapture(cameraUrl);
@@ -50,6 +106,7 @@ void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameranam
     cameras.push_back(newcamera);
 }
 
+
 void CameraHandler::CloseCamera(const QString &cameraname)
 {
     cameras.erase(remove_if(cameras.begin(), cameras.end(), [cameraname](const CameraInfo &camera)
@@ -65,7 +122,7 @@ const QImage &CameraHandler::getLatestFrame(const QString &cameraname) const
     });
 
     static QImage errorFrame;
-    QImageReader image("E:/ImageViewer/error.png");
+    QImageReader image("E:/FYP/image.png");
     errorFrame = image.read();
 
     if (it != cameras.end())
@@ -91,6 +148,8 @@ void CameraHandler::updateFrames()
     {
         Mat frame;
         camera.videoCapture.read(frame);
+        QImageReader image("E:/FYP/image.png");
+        QImage errorImage = image.read();
 
         if (frame.empty())
         {
@@ -109,6 +168,10 @@ void CameraHandler::updateFrames()
                 {
                     qDebug() << "Unable to reconnect to " << camera.cameraname;
                 }
+            }
+            else
+            {
+                camera.latestFrame = errorImage;
             }
         }
         else
@@ -167,6 +230,22 @@ bool CameraHandler::getCameraError(const QString &cameraName) const
     }
 }
 
+string CameraHandler::getCameraUrl(const QString &cameraName) const
+{
+    auto it = find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
+        return camera.cameraname == cameraName;
+    });
+
+    if (it != cameras.end())
+    {
+        return it->cameraUrl;
+    }
+    else
+    {
+        return ""; // or some default value for invalid cameraName
+    }
+}
+
 bool CameraHandler::attemptReconnect(CameraInfo &camera)
 {
     qDebug() << "Attempting to reconnect with " << camera.cameraname;
@@ -211,6 +290,16 @@ bool CameraHandler::attemptReconnect(CameraInfo &camera)
 
     // Return true if the reconnection was successful
     return camera.videoCapture.isOpened();
+}
+
+void CameraHandler::printConnectedCameras() const
+{
+    qDebug() << "Connected Cameras:";
+
+    for (const CameraInfo& camera : cameras)
+    {
+        qDebug() << camera.cameraname;
+    }
 }
 
 

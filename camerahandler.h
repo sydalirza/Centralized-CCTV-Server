@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QImage>
 #include <QTimer>
+#include <QThread>
 
 using namespace std;
 using namespace cv;
@@ -19,16 +20,21 @@ public:
     ~CameraHandler();
 
     void OpenCamera(const string &cameraUrl, const QString &cameraname);
+    void OpenCamera_single(const string &cameraUrl, const QString &cameraname);
     void CloseCamera(const QString &cameraname);
     void closeAllCameras();
+    void printConnectedCameras() const;
 
     const QImage& getLatestFrame(const QString &cameraname) const;
     int getNumberOfConnectedCameras() const;
     QString getCameraName(int index) const;
+    string getCameraUrl(const QString& cameraname) const;
     bool getCameraError(const QString& cameraname) const;
 
 signals:
     void frameUpdated(const QImage& frame, const QString& cameraname);
+    void cameraOpeningFailed(const QString& cameraname);
+    void cameraOpened(const QString& cameraname);
 
 private slots:
     void updateFrames();
@@ -42,7 +48,8 @@ private:
         bool isError = true;
     };
 
-    QTimer* timer;
+    QTimer openTimer; //Camera Connection Timer
+    QTimer *timer; //FPS Timer
     QVector<CameraInfo> cameras;
     bool attemptReconnect(CameraInfo &camera);
     QImage matToImage(const Mat &mat) const;

@@ -44,6 +44,11 @@ private slots:
 
     void initialize();
 
+    void handleCameraOpened();
+
+    void handleCameraOpeningFailed(const QString &cameraName);
+
+
 private:
     Ui::CameraScreens *ui;
     QTimer *timer;
@@ -61,12 +66,13 @@ private:
     QWidget* parentWidget;
 
     int totalWalls = 1; // Set an initial value, adjust as needed
-    int currentWall = 0; // Set an initial value, adjust as needed
+    int currentWall = 16; // Set an initial value, adjust as needed
     int camerasPerWall = 16; // Set an initial value, adjust as needed
 
     QVector<QLabel*> cameraLabels;  // Keep track of the QLabel widgets
     CameraHandler cameraHandler;    // Instance of CameraHandler
     QMap<QString, CustomLabel*> cameraLabelMap;
+    QMap<QString, SingleViewWidget*> cameraSingleViewWidgets;
 
     void addCameraLabel(const QString &cameraname, int total_screens, int i);
     void showLayoutButtons(int numberOfConnectedCameras);
