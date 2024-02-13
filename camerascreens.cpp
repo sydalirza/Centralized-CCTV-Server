@@ -29,7 +29,7 @@ CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
 
     connect(ui->addcamerabutton, &QPushButton::clicked, this, [this](){
         // Replace "C:/Users/Yousuf Traders/Downloads/1.mp4" and "Camera 2" with appropriate values
-        addCamera("rtsp://192.168.1.2:8080/h264.sdp", "Camera 5");
+        addCamera("rtsp://192.168.1.2:8080/h264.sdp", "Camera 2");
     });
 
     connect(ui->closecamerabutton, &QPushButton::clicked, this, [this](){
@@ -264,10 +264,7 @@ void CameraScreens::connectCameras()
 
     // Array of camera details (URL and name)
     const std::vector<std::pair<QString, QString>> cameras = {
-                                                              {"C:/Users/Yousuf Traders/Downloads/1.mp4", "Camera 1"},
-                                                              {"C:/Users/Yousuf Traders/Downloads/3.mp4", "Camera 2"},
-                                                              {"C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 3"},
-                                                              {"rtsp://192.168.1.2:8080/h264.sdp", "Camera 4"},
+                                                              {"rtsp://192.168.1.2:8080/h264.sdp", "Camera 4"}
 
                                                               };
 
@@ -288,9 +285,9 @@ void CameraScreens::connectCameras()
 void CameraScreens::addCamera(const QString& cameraUrl, const QString& cameraName)
 {
     qDebug() << "Adding Camera: " << cameraName;
-
     // Open the new camera
     cameraHandler.OpenCamera(cameraUrl.toStdString(), cameraName);
+    handleCameraOpened();
 }
 
 
@@ -302,10 +299,7 @@ void CameraScreens::removeCamera(const QString& cameraName)
     cameraHandler.CloseCamera(cameraName);
 
     // Update the UI after removing the camera
-    int numberOfConnectedCameras = cameraHandler.getNumberOfConnectedCameras();
-    showLayoutButtons(numberOfConnectedCameras);
-    updateCameraLayout(numberOfConnectedCameras, currentWall);
-    cameraHandler.printConnectedCameras();
+    handleCameraOpened();
 }
 
 void CameraScreens::handleCameraOpened()

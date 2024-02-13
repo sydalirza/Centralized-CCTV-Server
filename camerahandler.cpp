@@ -7,7 +7,7 @@
 CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this))
 {
     connect(timer, &QTimer::timeout, this, &CameraHandler::updateFrames);
-    timer->start(33); //FPS
+    timer->start(18); //FPS
 }
 
 CameraHandler:: ~CameraHandler(){
