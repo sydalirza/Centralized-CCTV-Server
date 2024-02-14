@@ -273,7 +273,6 @@ void CameraScreens::connectCameras()
 
     // Array of camera details (URL and name)
     const vector<std::pair<QString, QString>> cameras = {
-                                                                {"rtsp://192.168.1.2:8080/h264.sdp", "Camera 3"},
                                                                 {"C:/Users/Yousuf Traders/Downloads/1.mp4", "Camera 4"}
                                                               };
 
