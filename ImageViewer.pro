@@ -11,6 +11,7 @@ CONFIG += c++17 cmdline
 SOURCES += \
         camerahandler.cpp \
         camerascreens.cpp \
+        camerasettings.cpp \
         customlabel.cpp \
         main.cpp \
         mainwindow.cpp \
@@ -28,12 +29,14 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 FORMS += \
     camerascreens.ui \
+    camerasettings.ui \
     mainwindow.ui \
     singleviewwidget.ui
 
 HEADERS += \
     camerahandler.h \
     camerascreens.h \
+    camerasettings.h \
     customlabel.h \
     mainwindow.h \
     singleviewwidget.h

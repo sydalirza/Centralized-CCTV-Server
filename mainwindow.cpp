@@ -14,6 +14,7 @@
 #include <QDesktopServices>
 #include <QTabBar>
 #include <camerascreens.h>
+#include <camerasettings.h>
 #include <QScreen>
 #include <QGuiApplication>
 
@@ -66,8 +67,35 @@ void MainWindow::openDefaultTab()
     }
 }
 
-void MainWindow::on_pushButton_4_clicked()
+void MainWindow::on_close_button_clicked()
 {
     qApp->quit();
+}
+
+
+void MainWindow::on_cameras_button_clicked()
+{
+    if(!tab_already_open("Cameras"))
+    {
+        ui -> tabWidget -> addTab(new CameraSettings(), "Cameras");
+    }
+    else
+    {
+        qDebug() << "Tab Already Open";
+    }
+}
+
+bool MainWindow::tab_already_open(const QString &tabname)
+{
+    bool tabFound = false;
+    for (int i = 0; i < ui->tabWidget->count(); ++i) {
+        if (ui->tabWidget->tabText(i) == tabname) {
+            tabFound = true;
+            break;
+        }
+    }
+
+    return tabFound;
+
 }
 

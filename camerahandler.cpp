@@ -2,12 +2,14 @@
 #include <QDebug>
 #include <QImageReader>
 #include <QThread>
+#include <QtConcurrent/QtConcurrent>
+
 
 
 CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this))
 {
     connect(timer, &QTimer::timeout, this, &CameraHandler::updateFrames);
-    timer->start(18); //FPS
+    timer->start(5); //FPS
 }
 
 CameraHandler:: ~CameraHandler(){
@@ -57,7 +59,7 @@ void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameranam
     });
 
     // Start the timer with a timeout (adjust the timeout value as needed)
-    openTimer.start(500);  // 5000 milliseconds (5 seconds)
+    openTimer.start(500);  // 500 milliseconds (adjust as needed)
 
     // Wait for the timer to finish
     while (openTimer.isActive()) {
@@ -75,8 +77,6 @@ void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameranam
 
     // Timeout reached, assume camera opening failed
     qDebug() << "Camera opening attempt timed out." << cameraname << "1 ";
-
-
 }
 
 
@@ -109,11 +109,19 @@ void CameraHandler::OpenCamera_single(const string &cameraUrl, const QString &ca
 
 void CameraHandler::CloseCamera(const QString &cameraname)
 {
-    cameras.erase(remove_if(cameras.begin(), cameras.end(), [cameraname](const CameraInfo &camera)
-    {
+    auto it = std::remove_if(cameras.begin(), cameras.end(), [cameraname](const CameraInfo &camera) {
         return camera.cameraname == cameraname;
-                            }),cameras.end());
+    });
+
+    if (it != cameras.end())
+    {
+        qDebug() << "Removing " << it->cameraname;
+        // Release resources before removing the camera
+        it->videoCapture.release();
+        cameras.erase(it, cameras.end());
+    }
 }
+
 
 const QImage &CameraHandler::getLatestFrame(const QString &cameraname) const
 {
@@ -142,41 +150,60 @@ const QImage &CameraHandler::getLatestFrame(const QString &cameraname) const
     return errorFrame;
 }
 
+
 void CameraHandler::updateFrames()
 {
+
     for (auto &camera : cameras)
     {
+        // Skip processing frames if the camera has an error
+        if (camera.isError && !(camera.isReconnecting))
+        {
+            QFutureWatcher<void>* watcher = new QFutureWatcher<void>;
+
+            qDebug() << "Attempting to reconnect for " << camera.cameraname;
+            camera.isReconnecting = true;
+            // Use a separate thread for reconnection attempt
+            QFuture<void> future = QtConcurrent::run([this, &camera]() {
+                // Attempt to reopen the camera
+                    camera.videoCapture.open(camera.cameraUrl);
+
+                    // If the reconnection was successful, set the flag to false
+                    if (camera.videoCapture.isOpened()) {
+                        qDebug() << "Reconnected " << camera.cameraname;
+                        camera.isError = false;
+                        camera.isReconnecting = false;
+                    }
+
+
+                // If all reconnection attempts failed, remove the camera
+                if (camera.isError) {
+                    qDebug() << "Removing " << camera.cameraname << " due to disconnection";
+                    emit removeCamera(camera.cameraname);
+                }
+            });
+
+            // Start the watcher only once outside the loop
+            QObject::connect(watcher, &QFutureWatcher<void>::finished, watcher, &QFutureWatcher<void>::deleteLater);
+            watcher->setFuture(future);
+
+
+            // Skip processing frames for this camera in the current iteration
+            continue;
+        }
+
         Mat frame;
         camera.videoCapture.read(frame);
         QImageReader image("E:/FYP/image.png");
         QImage errorImage = image.read();
 
-        if (frame.empty())
+        if (frame.empty() and !(camera.isReconnecting))
         {
-            if (!camera.isError)
-            {
-                qDebug() << "Error reading frame from " << camera.cameraname;
-                camera.isError = true;
-
-                if (attemptReconnect(camera))
-                {
-                    qDebug() << "Reconnected to " << camera.cameraname;
-                    camera.isError = false;
-                }
-
-                else
-                {
-                    qDebug() << "Unable to reconnect to " << camera.cameraname;
-                }
-            }
-            else
-            {
-                camera.latestFrame = errorImage;
-            }
+            qDebug() << "Error reading frame from " << camera.cameraname;
+            camera.isError = true;
         }
         else
         {
-            camera.isError = false;
             camera.latestFrame = matToImage(frame);
         }
 
@@ -184,8 +211,10 @@ void CameraHandler::updateFrames()
     }
 }
 
+
 QImage CameraHandler::matToImage(const Mat &mat) const
 {
+
     if (mat.channels() == 3)
     {
         QImage image(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_RGB888);
@@ -246,51 +275,42 @@ string CameraHandler::getCameraUrl(const QString &cameraName) const
     }
 }
 
-bool CameraHandler::attemptReconnect(CameraInfo &camera)
-{
-    qDebug() << "Attempting to reconnect with " << camera.cameraname;
+// bool CameraHandler::attemptReconnect(CameraInfo &camera)
+// {
+//     qDebug() << "Attempting to reconnect with " << camera.cameraname;
 
-    // Use a separate thread for reconnection attempt
-    QThread* reconnectThread = new QThread;
-    QTimer* reconnectTimer = new QTimer;
+//     // Use a separate thread for reconnection attempt
+//     QThread* reconnectThread = new QThread;
+//     QTimer* reconnectTimer = new QTimer;
 
-    // Connect the timer timeout to a lambda function for reconnection attempt
-    QObject::connect(reconnectTimer, &QTimer::timeout, [reconnectTimer, reconnectThread, &camera]() {
-        // Attempt to reopen the camera
-        camera.videoCapture.open(camera.cameraUrl);
-        // If the reconnection was successful, stop the timer and quit the thread
-        if (camera.videoCapture.isOpened()) {
-            reconnectTimer->stop();
-            reconnectThread->quit();
-        }
-    });
+//     // Connect the timer timeout to a lambda function for reconnection attempt
+//     QObject::connect(reconnectTimer, &QTimer::timeout, [reconnectTimer, &camera]() {
+//         // Attempt to reopen the camera
+//         camera.videoCapture.open(camera.cameraUrl);
+//         // If the reconnection was successful, stop the timer and emit reconnected signal
+//         if (camera.videoCapture.isOpened()) {
+//             reconnectTimer->stop();
+//             emit cameraReconnected(camera.cameraname);
+//         }
+//     });
 
-    // Start the timer with a timeout (adjust the timeout value as needed)
-    reconnectTimer->start(5000);  // 5000 milliseconds (5 seconds)
+//     // Connect the thread's finished signal to stop the timer and delete it
+//     QObject::connect(reconnectThread, &QThread::finished, reconnectTimer, &QTimer::stop);
+//     QObject::connect(reconnectThread, &QThread::finished, reconnectTimer, &QTimer::deleteLater);
 
-    // Move the timer to the separate thread
-    reconnectTimer->moveToThread(reconnectThread);
+//     // Connect the timer's timeout to delete the timer
+//     QObject::connect(reconnectTimer, &QTimer::timeout, reconnectTimer, &QTimer::deleteLater);
 
-    // Connect the thread's finished signal to the thread's deleteLater slot
-    QObject::connect(reconnectThread, &QThread::finished, reconnectThread, &QThread::deleteLater);
+//     // Start the thread
+//     reconnectThread->start();
 
-    // Connect the thread's finished signal to stop the timer and delete it
-    QObject::connect(reconnectThread, &QThread::finished, reconnectTimer, &QTimer::stop);
-    QObject::connect(reconnectThread, &QThread::finished, reconnectTimer, &QTimer::deleteLater);
+//     // Start the timer with a timeout (adjust the timeout value as needed)
+//     reconnectTimer->start(5000);  // 5000 milliseconds (5 seconds)
 
-    // Start the thread
-    reconnectThread->start();
+//     // Return true to indicate that the reconnection process has started
+//     return true;
+// }
 
-    // Wait for the thread to finish with a timeout
-    if (!reconnectThread->wait(10000)) {
-        // Timeout reached, assume reconnection failed
-        qDebug() << "Reconnection attempt timed out.";
-        return false;
-    }
-
-    // Return true if the reconnection was successful
-    return camera.videoCapture.isOpened();
-}
 
 void CameraHandler::printConnectedCameras() const
 {

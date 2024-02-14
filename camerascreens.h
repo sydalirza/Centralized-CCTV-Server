@@ -14,9 +14,12 @@ class CameraScreens;
 class CameraScreens : public QWidget
 {
     Q_OBJECT
+    static const int MAX_RECONNECT_ATTEMPTS = 3;
+
 
 public:
     explicit CameraScreens(QWidget *parent = nullptr, QWidget *parentWidget = nullptr);
+
     void connectCameras();
     ~CameraScreens();
 
@@ -45,6 +48,8 @@ private slots:
     void initialize();
 
     void handleCameraOpened();
+
+    void handleCameraClosed();
 
     void handleCameraOpeningFailed(const QString &cameraName);
 

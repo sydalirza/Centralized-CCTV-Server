@@ -29,7 +29,7 @@ CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
 
     connect(ui->addcamerabutton, &QPushButton::clicked, this, [this](){
         // Replace "C:/Users/Yousuf Traders/Downloads/1.mp4" and "Camera 2" with appropriate values
-        addCamera("rtsp://192.168.1.2:8080/h264.sdp", "Camera 2");
+        addCamera("C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 2");
     });
 
     connect(ui->closecamerabutton, &QPushButton::clicked, this, [this](){
@@ -147,7 +147,7 @@ void CameraScreens::handleFrameUpdate(const QImage& frame, const QString& camera
             // Check if the frame has an error
             if (cameraHandler.getCameraError(cameraName)) {
                 // Create a black image
-                QImage errorImage("E:/FYP/image.png"); //Camera gets disconnected
+                QImage errorImage("E:/ImageViewer/reconnecting.png"); //Camera gets disconnected
 
                 // Set the label pixmap with the black image
                 label->setPixmap(QPixmap::fromImage(errorImage));
@@ -240,21 +240,30 @@ void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_s
 
 void CameraScreens::showLayoutButtons(int numberofConnectedCameras)
 {
-    if(numberofConnectedCameras > 1)
+    if(numberofConnectedCameras > 4 || numberofConnectedCameras > 1)
     {
-        ui->one_camera->setEnabled(false);
-    }
-    else if(numberofConnectedCameras > 4)
-    {
-        ui->four_camera->setEnabled(false);
+        if(numberofConnectedCameras <= 4 && numberofConnectedCameras > 1)
+        {
+            ui->one_camera->setEnabled(false);
+        }
+        else
+        {
+            ui->one_camera->setEnabled(false);
+            ui->four_camera->setEnabled(false);
+            ui->sixteen_camera->setEnabled(false);
+        }
     }
     else if(numberofConnectedCameras == 1 && !(ui->one_camera->isEnabled()))
     {
         ui->one_camera->setEnabled(true);
+
+        ui->sixteen_camera->setEnabled(true);
     }
     else if(numberofConnectedCameras < 4 && !(ui->four_camera->isEnabled()))
     {
         ui->one_camera->setEnabled(true);
+
+        ui->sixteen_camera->setEnabled(true);
     }
 }
 
@@ -263,15 +272,17 @@ void CameraScreens::connectCameras()
     qDebug() << "Connecting Cameras";
 
     // Array of camera details (URL and name)
-    const std::vector<std::pair<QString, QString>> cameras = {
-                                                              {"rtsp://192.168.1.2:8080/h264.sdp", "Camera 4"}
-
+    const vector<std::pair<QString, QString>> cameras = {
+                                                                {"rtsp://192.168.1.2:8080/h264.sdp", "Camera 3"},
+                                                                {"C:/Users/Yousuf Traders/Downloads/1.mp4", "Camera 4"}
                                                               };
 
 
     connect(&cameraHandler, &CameraHandler::cameraOpened, this, &CameraScreens::handleCameraOpened);
     connect(&cameraHandler, &CameraHandler::cameraOpeningFailed, this, &CameraScreens::handleCameraOpeningFailed);
     connect(&cameraHandler, &CameraHandler::frameUpdated, this, &CameraScreens::handleFrameUpdate);
+    connect(&cameraHandler, &CameraHandler::removeCamera, this, &CameraScreens::removeCamera);
+
 
     // Add cameras using a loop
     for (const auto &camera : cameras)
@@ -293,18 +304,30 @@ void CameraScreens::addCamera(const QString& cameraUrl, const QString& cameraNam
 
 void CameraScreens::removeCamera(const QString& cameraName)
 {
+
     qDebug() << "Removing Camera: " << cameraName;
 
     // Close the camera
     cameraHandler.CloseCamera(cameraName);
 
     // Update the UI after removing the camera
-    handleCameraOpened();
+    handleCameraClosed();
 }
 
 void CameraScreens::handleCameraOpened()
 {
     int numberOfConnectedCameras = cameraHandler.getNumberOfConnectedCameras();
+    qDebug() << numberOfConnectedCameras;
+    showLayoutButtons(numberOfConnectedCameras);
+    updateCameraLayout(numberOfConnectedCameras, currentWall);
+    cameraHandler.printConnectedCameras();
+}
+
+
+void CameraScreens::handleCameraClosed()
+{
+    int numberOfConnectedCameras = cameraHandler.getNumberOfConnectedCameras();
+    qDebug() << numberOfConnectedCameras;
     showLayoutButtons(numberOfConnectedCameras);
     updateCameraLayout(numberOfConnectedCameras, currentWall);
     cameraHandler.printConnectedCameras();

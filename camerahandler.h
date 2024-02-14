@@ -35,6 +35,7 @@ signals:
     void frameUpdated(const QImage& frame, const QString& cameraname);
     void cameraOpeningFailed(const QString& cameraname);
     void cameraOpened(const QString& cameraname);
+    void removeCamera(const QString& cameraname);
 
 private slots:
     void updateFrames();
@@ -45,7 +46,8 @@ private:
         QString cameraname;
         QImage latestFrame;
         string cameraUrl;
-        bool isError = true;
+        bool isError = false;
+        bool isReconnecting = false;
     };
 
     QTimer openTimer; //Camera Connection Timer
