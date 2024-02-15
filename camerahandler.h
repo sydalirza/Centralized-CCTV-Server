@@ -7,6 +7,8 @@
 #include <QImage>
 #include <QTimer>
 #include <QThread>
+#include <QRunnable>
+#include <QThreadPool>
 
 using namespace std;
 using namespace cv;
@@ -53,8 +55,12 @@ private:
     QTimer openTimer; //Camera Connection Timer
     QTimer *timer; //FPS Timer
     QVector<CameraInfo> cameras;
+    QThreadPool threadPool;
     bool attemptReconnect(CameraInfo &camera);
     QImage matToImage(const Mat &mat) const;
+    void reconnectCamera(CameraInfo& camera);
+    void processFrame(CameraInfo& camera);
+
 };
 
 #endif

@@ -29,7 +29,7 @@
      <property name="title">
       <string/>
      </property>
-     <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0,0,0,0,0,0,0">
+     <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0,0,0,0,0,0,0,0">
       <item>
        <widget class="QPushButton" name="previous_button">
         <property name="text">
@@ -102,6 +102,13 @@
        <widget class="QPushButton" name="sixteen_camera">
         <property name="text">
          <string>16</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="thirtytwo_camera">
+        <property name="text">
+         <string>32</string>
         </property>
        </widget>
       </item>

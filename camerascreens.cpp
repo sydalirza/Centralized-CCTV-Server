@@ -81,6 +81,7 @@ void CameraScreens::on_sixteen_camera_clicked()
     updateCameraLayout(cameraHandler.getNumberOfConnectedCameras(), 16);
 }
 
+
 void CameraScreens::onImageClicked()
 {
     CustomLabel* clickedLabel = qobject_cast<CustomLabel*>(sender());
@@ -158,6 +159,10 @@ void CameraScreens::handleFrameUpdate(const QImage& frame, const QString& camera
             }
         }
     }
+    else
+    {
+        qDebug() << "Camera does not exist: " << cameraName;
+    }
 }
 
 void CameraScreens::addCameraLabel(const QString& cameraName, int total_screens, int i)
@@ -197,6 +202,10 @@ void CameraScreens::addCameraLabel(const QString& cameraName, int total_screens,
 
 void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_screens)
 {
+    ui->closecamerabutton->setEnabled(false);
+    ui->addcamerabutton->setEnabled(false);
+
+
     // Clear existing widgets in the layout
     QLayoutItem* child;
     while ((child = ui->camera_viewer->takeAt(0)) != nullptr) {
@@ -236,6 +245,10 @@ void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_s
 
     ui->previous_button->setVisible(total_screens < numberOfConnectedCameras);
     ui->next_button->setVisible(total_screens < numberOfConnectedCameras);
+
+    ui->closecamerabutton->setEnabled(true);
+    ui->addcamerabutton->setEnabled(true);
+
 }
 
 void CameraScreens::showLayoutButtons(int numberofConnectedCameras)
@@ -273,7 +286,10 @@ void CameraScreens::connectCameras()
 
     // Array of camera details (URL and name)
     const vector<std::pair<QString, QString>> cameras = {
-                                                                {"C:/Users/Yousuf Traders/Downloads/1.mp4", "Camera 4"}
+
+                                                                {"C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 2"}
+
+
                                                               };
 
 
@@ -307,6 +323,7 @@ void CameraScreens::removeCamera(const QString& cameraName)
     qDebug() << "Removing Camera: " << cameraName;
 
     // Close the camera
+    cameraLabelMap.remove(cameraName);
     cameraHandler.CloseCamera(cameraName);
 
     // Update the UI after removing the camera
@@ -316,26 +333,21 @@ void CameraScreens::removeCamera(const QString& cameraName)
 void CameraScreens::handleCameraOpened()
 {
     int numberOfConnectedCameras = cameraHandler.getNumberOfConnectedCameras();
-    qDebug() << numberOfConnectedCameras;
     showLayoutButtons(numberOfConnectedCameras);
     updateCameraLayout(numberOfConnectedCameras, currentWall);
-    cameraHandler.printConnectedCameras();
 }
 
 
 void CameraScreens::handleCameraClosed()
 {
     int numberOfConnectedCameras = cameraHandler.getNumberOfConnectedCameras();
-    qDebug() << numberOfConnectedCameras;
     showLayoutButtons(numberOfConnectedCameras);
     updateCameraLayout(numberOfConnectedCameras, currentWall);
-    cameraHandler.printConnectedCameras();
 }
 
 // Slot to handle camera opening failure
 void CameraScreens::handleCameraOpeningFailed(const QString &cameraName)
 {
-    // Handle camera opening failure, if needed
     qDebug() << "Camera opening attempt failed for " << cameraName;
 }
 
