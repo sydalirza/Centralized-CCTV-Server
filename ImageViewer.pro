@@ -13,7 +13,6 @@ SOURCES += \
         camerascreens.cpp \
         camerasettings.cpp \
         customlabel.cpp \
-        facerecognition.cpp \
         main.cpp \
         mainwindow.cpp \
         singleviewwidget.cpp
@@ -39,7 +38,6 @@ HEADERS += \
     camerascreens.h \
     camerasettings.h \
     customlabel.h \
-    facerecognition.h \
     mainwindow.h \
     singleviewwidget.h
 
