@@ -54,7 +54,7 @@ void MainWindow::on_tab_button_1_clicked()
 void MainWindow::openDefaultTab()
 {
     CameraScreens *defaultTab = new CameraScreens(this, this);
-    int tabIndex = ui->tabWidget->addTab(defaultTab, "Default Tab");
+    int tabIndex = ui->tabWidget->addTab(defaultTab, "Main View");
     QTabBar* tabBar = ui->tabWidget->findChild<QTabBar*>();
     if (tabBar)
     {

@@ -29,14 +29,10 @@ CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
 
     connect(ui->addcamerabutton, &QPushButton::clicked, this, [this](){
         // Replace "C:/Users/Yousuf Traders/Downloads/1.mp4" and "Camera 2" with appropriate values
-        addCamera("C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 2");
+        addCamera("rtsp://10.4.64.255:8080", "Camera 4");
     });
 
-    connect(ui->closecamerabutton, &QPushButton::clicked, this, [this](){
-        // Replace "Camera 1" with the camera name you want to remove
-        removeCamera("Camera 2");
-    });
-
+    ui->closecamerabutton->setEnabled(false);
 }
 
 // Implementation of the initialization slot
@@ -84,21 +80,38 @@ void CameraScreens::on_sixteen_camera_clicked()
 
 void CameraScreens::onImageClicked()
 {
+
     CustomLabel* clickedLabel = qobject_cast<CustomLabel*>(sender());
 
     if (clickedLabel && clickedLabel != lastClickedLabel) {
         if (lastClickedLabel) {
             lastClickedLabel->setStyleSheet("");
+            disconnect(ui->closecamerabutton, &QPushButton::clicked, nullptr, nullptr);
         }
 
-        clickedLabel->setStyleSheet("border: 2px solid red;");
         lastClickedLabel = clickedLabel;
 
         // Retrieve the camera name associated with the clicked label
         QString cameraName = cameraLabelMap.key(clickedLabel);
 
+
+        if(cameraHandler.getCameraError(cameraName))
+        {
+            qDebug() << cameraName << " is disconnected";
+            return;
+        }
+        else
+        {
+            clickedLabel->setStyleSheet("border: 2px solid red;");
+            ui->closecamerabutton->setEnabled(true);
+            connect(ui->closecamerabutton, &QPushButton::clicked, this, [this, cameraName]() {
+                removeCamera(cameraName);
+            });
+        }
+
         // Print the name of the clicked camera
         qDebug() << "Clicked Camera: " << cameraName;
+
     }
 }
 
@@ -246,7 +259,6 @@ void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_s
     ui->previous_button->setVisible(total_screens < numberOfConnectedCameras);
     ui->next_button->setVisible(total_screens < numberOfConnectedCameras);
 
-    ui->closecamerabutton->setEnabled(true);
     ui->addcamerabutton->setEnabled(true);
 
 }
@@ -286,10 +298,8 @@ void CameraScreens::connectCameras()
 
     // Array of camera details (URL and name)
     const vector<std::pair<QString, QString>> cameras = {
-
-                                                                {"C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 2"}
-
-
+                {"C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 3"},
+                {"C:/Users/Yousuf Traders/Downloads/3.mp4", "Camera 4"}
                                                               };
 
 

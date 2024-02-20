@@ -9,7 +9,12 @@
 CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this))
 {
     connect(timer, &QTimer::timeout, this, &CameraHandler::updateFrames);
-    timer->start(33); //FPS
+    timer->start(66); //FPS
+
+    QDir videoDir(videoFolder);
+    if (!videoDir.exists()) {
+        videoDir.mkpath(".");
+    }
 }
 
 CameraHandler:: ~CameraHandler(){
@@ -21,9 +26,47 @@ void CameraHandler::closeAllCameras()
     for (auto& camera : cameras)
     {
         camera.videoCapture.release();
+        camera.videoWriter.release();
     }
 
     cameras.clear();
+}
+
+void CameraHandler::initializeVideoWriter(const QString &cameraname)
+{
+    // Find the camera with the specified name
+    auto it = std::find_if(cameras.begin(), cameras.end(), [cameraname](const CameraInfo &camera) {
+        return camera.cameraname == cameraname;
+    });
+
+    if (it != cameras.end()) {
+        // Set up the directory path for the camera
+        QString cameraDirPath = videoFolder + "/" + cameraname;
+
+        // Create the directory for the camera if it doesn't exist
+        QDir cameraDir(cameraDirPath);
+        if (!cameraDir.exists()) {
+            if (cameraDir.mkpath(cameraDirPath)) {
+                qDebug() << "Directory created successfully: " << cameraDirPath;
+            } else {
+                qDebug() << "Error: Failed to create directory: " << cameraDirPath;
+            }
+        }
+
+        // Set up VideoWriter with codec XVID and 20 FPS
+        int codec = VideoWriter::fourcc('X', 'V', 'I', 'D');
+        Size frameSize(it->videoCapture.get(CAP_PROP_FRAME_WIDTH), it->videoCapture.get(CAP_PROP_FRAME_HEIGHT));
+
+        it->videoWriter.open(cameraDirPath.toStdString() + "/video_" + cameraname.toStdString() + ".avi", codec, 15, frameSize);
+
+        if (it->videoWriter.isOpened()) {
+            qDebug() << "  VideoWriter opened successfully.";
+        } else {
+            qDebug() << "  Error: VideoWriter failed to open!";
+        }
+    } else {
+        qDebug() << "Camera not found: " << cameraname;
+    }
 }
 
 void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameraname)
@@ -55,6 +98,8 @@ void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameranam
             qDebug() << "Opening " << cameraname;
 
             cameras.push_back(newcamera);
+
+            initializeVideoWriter(cameraname);
         }
     });
 
@@ -76,7 +121,7 @@ void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameranam
     }
 
     // Timeout reached, assume camera opening failed
-    qDebug() << "Camera opening attempt timed out." << cameraname << "1 ";
+    qDebug() << "Camera opening attempt timed out." << cameraname;
     emit cameraOpeningFailed(cameraname);
 }
 
@@ -119,6 +164,9 @@ void CameraHandler::CloseCamera(const QString &cameraname)
         qDebug() << "Removing " << it->cameraname;
         // Release resources before removing the camera
         it->videoCapture.release();
+
+        it->videoWriter.release();
+
         cameras.erase(it, cameras.end());
     }
 }
@@ -231,11 +279,13 @@ void CameraHandler::processFrame(CameraInfo& camera)
     else {
         // qDebug() << "Reading frame from " << camera.cameraname << " is running on thread" << QThread::currentThreadId();
         camera.latestFrame = matToImage(frame);
+        if (camera.videoWriter.isOpened()) {
+            camera.videoWriter.write(frame);
+        }
     }
 
     emit frameUpdated(camera.latestFrame, camera.cameraname);
 }
-
 
 
 QImage CameraHandler::matToImage(const Mat &mat) const
@@ -300,43 +350,6 @@ string CameraHandler::getCameraUrl(const QString &cameraName) const
         return ""; // or some default value for invalid cameraName
     }
 }
-
-// bool CameraHandler::attemptReconnect(CameraInfo &camera)
-// {
-//     qDebug() << "Attempting to reconnect with " << camera.cameraname;
-
-//     // Use a separate thread for reconnection attempt
-//     QThread* reconnectThread = new QThread;
-//     QTimer* reconnectTimer = new QTimer;
-
-//     // Connect the timer timeout to a lambda function for reconnection attempt
-//     QObject::connect(reconnectTimer, &QTimer::timeout, [reconnectTimer, &camera]() {
-//         // Attempt to reopen the camera
-//         camera.videoCapture.open(camera.cameraUrl);
-//         // If the reconnection was successful, stop the timer and emit reconnected signal
-//         if (camera.videoCapture.isOpened()) {
-//             reconnectTimer->stop();
-//             emit cameraReconnected(camera.cameraname);
-//         }
-//     });
-
-//     // Connect the thread's finished signal to stop the timer and delete it
-//     QObject::connect(reconnectThread, &QThread::finished, reconnectTimer, &QTimer::stop);
-//     QObject::connect(reconnectThread, &QThread::finished, reconnectTimer, &QTimer::deleteLater);
-
-//     // Connect the timer's timeout to delete the timer
-//     QObject::connect(reconnectTimer, &QTimer::timeout, reconnectTimer, &QTimer::deleteLater);
-
-//     // Start the thread
-//     reconnectThread->start();
-
-//     // Start the timer with a timeout (adjust the timeout value as needed)
-//     reconnectTimer->start(5000);  // 5000 milliseconds (5 seconds)
-
-//     // Return true to indicate that the reconnection process has started
-//     return true;
-// }
-
 
 void CameraHandler::printConnectedCameras() const
 {

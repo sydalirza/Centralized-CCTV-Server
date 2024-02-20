@@ -50,6 +50,7 @@ private:
         string cameraUrl;
         bool isError = false;
         bool isReconnecting = false;
+        VideoWriter videoWriter;
     };
 
     QTimer openTimer; //Camera Connection Timer
@@ -60,6 +61,11 @@ private:
     QImage matToImage(const Mat &mat) const;
     void reconnectCamera(CameraInfo& camera);
     void processFrame(CameraInfo& camera);
+
+
+    const QString videoFolder = "Recordings";  // Added for video recording
+    void initializeVideoWriter(const QString &cameraname);
+    void closeVideoWriter(const QString &cameraname);
 
 };
 
