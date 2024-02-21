@@ -15,6 +15,12 @@ CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTim
     if (!videoDir.exists()) {
         videoDir.mkpath(".");
     }
+
+    QString cascadePath = "C:/Users/Yousuf Traders/Downloads/opencv/sources/data/haarcascades/haarcascade_frontalface_default.xml";  // Change the path accordingly
+    if (!faceCascade.load(cascadePath.toStdString())) {
+        qWarning() << "Error loading face cascade.";
+    }
+
 }
 
 CameraHandler:: ~CameraHandler(){
@@ -60,9 +66,9 @@ void CameraHandler::initializeVideoWriter(const QString &cameraname)
         it->videoWriter.open(cameraDirPath.toStdString() + "/video_" + cameraname.toStdString() + ".avi", codec, 15, frameSize);
 
         if (it->videoWriter.isOpened()) {
-            qDebug() << "  VideoWriter opened successfully.";
+            qDebug() << "VideoWriter opened successfully.";
         } else {
-            qDebug() << "  Error: VideoWriter failed to open!";
+            qDebug() << "Error: VideoWriter failed to open!";
         }
     } else {
         qDebug() << "Camera not found: " << cameraname;
@@ -104,7 +110,7 @@ void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameranam
     });
 
     // Start the timer with a timeout (adjust the timeout value as needed)
-    openTimer.start(500);  // 500 milliseconds (adjust as needed)
+    openTimer.start(5000);  // 5000 milliseconds (adjust as needed)
 
     // Wait for the timer to finish
     while (openTimer.isActive()) {
@@ -232,7 +238,7 @@ void CameraHandler::updateFrames()
         }
 
         if (camera.isError) {
-            qDebug() << "Attempting to reconnect for " << camera.cameraname << " is running on thread" << QThread::currentThreadId();
+            qDebug() << "Attempting to reconnect for " << camera.cameraname;
             camera.isReconnecting = true;
 
             // Use a separate thread for reconnection attempt
@@ -272,13 +278,14 @@ void CameraHandler::processFrame(CameraInfo& camera)
     Mat frame;
     camera.videoCapture.read(frame);
 
-    if (frame.empty()) {
-        qDebug() << "Error reading frame from " << camera.cameraname << " is running on thread" << QThread::currentThreadId();
+    if (frame.empty() && !camera.isError) {
+        qDebug() << "Error reading frame from " << camera.cameraname;
         camera.isError = true;
     }
     else {
-        // qDebug() << "Reading frame from " << camera.cameraname << " is running on thread" << QThread::currentThreadId();
+        // Update the latest frame with faces
         camera.latestFrame = matToImage(frame);
+
         if (camera.videoWriter.isOpened()) {
             camera.videoWriter.write(frame);
         }
@@ -360,5 +367,3 @@ void CameraHandler::printConnectedCameras() const
         qDebug() << camera.cameraname;
     }
 }
-
-

@@ -104,14 +104,14 @@
             <item>
              <widget class="QPushButton" name="tab_button_1">
               <property name="text">
-               <string>Dining Rooms</string>
+               <string>Layout 1</string>
               </property>
              </widget>
             </item>
             <item>
              <widget class="QPushButton" name="tab_button_2">
               <property name="text">
-               <string>Test2</string>
+               <string>Layout 2</string>
               </property>
              </widget>
             </item>

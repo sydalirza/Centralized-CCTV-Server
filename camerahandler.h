@@ -3,6 +3,7 @@
 
 
 #include <opencv2/opencv.hpp>
+#include "facerecognition.h"
 #include <QObject>
 #include <QImage>
 #include <QTimer>
@@ -66,6 +67,10 @@ private:
     const QString videoFolder = "Recordings";  // Added for video recording
     void initializeVideoWriter(const QString &cameraname);
     void closeVideoWriter(const QString &cameraname);
+
+
+    Mat detectFaces(const cv::Mat &frame);
+    cv::CascadeClassifier faceCascade; // Declare a CascadeClassifier member
 
 };
 

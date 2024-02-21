@@ -51,7 +51,7 @@
            </spacer>
           </item>
           <item>
-           <widget class="QRadioButton" name="radioButton_2">
+           <widget class="QRadioButton" name="rtsp_radiobutton">
             <property name="text">
              <string>RTSP</string>
             </property>
@@ -71,7 +71,7 @@
            </spacer>
           </item>
           <item>
-           <widget class="QRadioButton" name="radioButton">
+           <widget class="QRadioButton" name="mp4_radiobutton">
             <property name="text">
              <string>MP4</string>
             </property>
@@ -120,7 +120,7 @@
              </widget>
             </item>
             <item row="0" column="1">
-             <widget class="QLineEdit" name="lineEdit"/>
+             <widget class="QLineEdit" name="camera_name"/>
             </item>
             <item row="1" column="0">
              <widget class="QLabel" name="label_2">
@@ -130,7 +130,7 @@
              </widget>
             </item>
             <item row="1" column="1">
-             <widget class="QLineEdit" name="lineEdit_2"/>
+             <widget class="QLineEdit" name="ip_address"/>
             </item>
             <item row="2" column="0">
              <widget class="QLabel" name="label_3">
@@ -140,17 +140,17 @@
              </widget>
             </item>
             <item row="2" column="1">
-             <widget class="QLineEdit" name="lineEdit_3"/>
+             <widget class="QLineEdit" name="port"/>
             </item>
             <item row="3" column="0">
              <widget class="QLabel" name="label_4">
               <property name="text">
-               <string>User:</string>
+               <string>Username:</string>
               </property>
              </widget>
             </item>
             <item row="3" column="1">
-             <widget class="QLineEdit" name="lineEdit_4"/>
+             <widget class="QLineEdit" name="username"/>
             </item>
             <item row="4" column="0">
              <widget class="QLabel" name="label_5">
@@ -160,7 +160,7 @@
              </widget>
             </item>
             <item row="4" column="1">
-             <widget class="QLineEdit" name="lineEdit_5"/>
+             <widget class="QLineEdit" name="password"/>
             </item>
             <item row="5" column="0">
              <widget class="QLabel" name="label_6">
@@ -170,7 +170,7 @@
              </widget>
             </item>
             <item row="5" column="1">
-             <widget class="QLineEdit" name="lineEdit_6"/>
+             <widget class="QLineEdit" name="url_address"/>
             </item>
            </layout>
           </item>
@@ -205,14 +205,14 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_5">
           <item>
-           <widget class="QPushButton" name="pushButton_2">
+           <widget class="QPushButton" name="addbutton">
             <property name="text">
              <string>Add</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="pushButton">
+           <widget class="QPushButton" name="clearbutton">
             <property name="text">
              <string>Clear</string>
             </property>
@@ -248,7 +248,7 @@
            </spacer>
           </item>
           <item>
-           <widget class="QTableView" name="tableView"/>
+           <widget class="QTableView" name="connectedcameras_tableView"/>
           </item>
           <item>
            <spacer name="verticalSpacer_4">
@@ -269,14 +269,14 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_8">
             <item>
-             <widget class="QPushButton" name="pushButton_4">
+             <widget class="QPushButton" name="tableitem_edit">
               <property name="text">
                <string>Edit</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="pushButton_3">
+             <widget class="QPushButton" name="tableitem_delete">
               <property name="text">
                <string>Delete</string>
               </property>
@@ -310,26 +310,26 @@
    <item>
     <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0">
      <item>
-      <widget class="QTableView" name="tableView_2"/>
+      <widget class="QTableView" name="onvif_tableView"/>
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_9">
        <item>
-        <widget class="QPushButton" name="pushButton_5">
+        <widget class="QPushButton" name="scan_onvif_button">
          <property name="text">
           <string>Scan</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton_6">
+        <widget class="QPushButton" name="add_onvif_button">
          <property name="text">
           <string>Add</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton_7">
+        <widget class="QPushButton" name="delete_onvif_button">
          <property name="text">
           <string>Delete</string>
          </property>

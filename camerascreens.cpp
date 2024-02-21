@@ -29,7 +29,7 @@ CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
 
     connect(ui->addcamerabutton, &QPushButton::clicked, this, [this](){
         // Replace "C:/Users/Yousuf Traders/Downloads/1.mp4" and "Camera 2" with appropriate values
-        addCamera("rtsp://10.4.64.255:8080", "Camera 4");
+        addCamera("rtsp://admin:admin@192.168.1.6:8080/h264.sdp", "Camera 8");
     });
 
     ui->closecamerabutton->setEnabled(false);
@@ -298,9 +298,8 @@ void CameraScreens::connectCameras()
 
     // Array of camera details (URL and name)
     const vector<std::pair<QString, QString>> cameras = {
-                {"C:/Users/Yousuf Traders/Downloads/2.mp4", "Camera 3"},
-                {"C:/Users/Yousuf Traders/Downloads/3.mp4", "Camera 4"}
-                                                              };
+                                                         {"C:/Users/Yousuf Traders/Downloads/1.mp4", "Dining Room"}
+                                                         };
 
 
     connect(&cameraHandler, &CameraHandler::cameraOpened, this, &CameraScreens::handleCameraOpened);
