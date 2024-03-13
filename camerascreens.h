@@ -5,7 +5,10 @@
 #include <QMessageBox>
 #include "customlabel.h"
 #include "singleviewwidget.h"
+#include "focusview.h"
 #include "camerahandler.h"
+#include "camerasettings.h"
+#include "rewindui.h"
 
 namespace Ui {
 class CameraScreens;
@@ -68,6 +71,9 @@ private:
     CustomLabel *selectedLabel;
 
     SingleViewWidget *singleViewWidget = nullptr;
+    FocusView *focusView = nullptr;
+    RewindUi *RewindUI = nullptr;
+
     QWidget* parentWidget;
 
     int totalWalls = 1; // Set an initial value, adjust as needed
@@ -76,6 +82,7 @@ private:
 
     QVector<QLabel*> cameraLabels;  // Keep track of the QLabel widgets
     CameraHandler cameraHandler;    // Instance of CameraHandler
+    CameraSettings cameraSettings;
     QMap<QString, CustomLabel*> cameraLabelMap;
     QMap<QString, SingleViewWidget*> cameraSingleViewWidgets;
 

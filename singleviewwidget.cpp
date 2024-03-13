@@ -12,7 +12,7 @@ SingleViewWidget::SingleViewWidget(QWidget *parent, const QString& cameraName, c
     layout->addWidget(imageLabel);
 
     // Move the widget to the cameraThread
-    this->moveToThread(&cameraThread);
+    // this->moveToThread(&cameraThread);
 
     // Connect the camera signal to the slot for continuous frame updates
     connect(&cameraHandler, &CameraHandler::frameUpdated, this, &SingleViewWidget::updateImage);
@@ -54,11 +54,13 @@ void SingleViewWidget::updateImage(const QImage &frame)
     if (detectfaces)
     {
         Mat newframe = ImagetoMat(frame);
-        Mat faceframe = facedetection(newframe);
-        QImage finalimage = matToImage(faceframe);
+
+        imshow("Live Face Detection", facedetection(newframe));
+
+        QImage finalimage = matToImage(facedetection(newframe));
 
         // Update the QLabel with the new frame
-        imageLabel->setPixmap(QPixmap::fromImage(finalimage));
+        imageLabel->setPixmap(QPixmap::fromImage(frame));
         imageLabel->setScaledContents(true);
     }
     else
@@ -100,9 +102,8 @@ Mat SingleViewWidget::ImagetoMat(const QImage &image)
     return mat;
 }
 
-Mat SingleViewWidget::facedetection(Mat frame)
+Mat SingleViewWidget::facedetection(Mat &frame)
 {
-    qDebug() << "Detecting";
     Mat frame_gray;
     cvtColor(frame, frame_gray, COLOR_BGR2GRAY);
 

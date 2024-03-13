@@ -9,7 +9,7 @@
 CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this))
 {
     connect(timer, &QTimer::timeout, this, &CameraHandler::updateFrames);
-    timer->start(66); //FPS
+    timer->start(60); //FPS
 
     QDir videoDir(videoFolder);
     if (!videoDir.exists()) {
@@ -60,10 +60,10 @@ void CameraHandler::initializeVideoWriter(const QString &cameraname)
         }
 
         // Set up VideoWriter with codec XVID and 20 FPS
-        int codec = VideoWriter::fourcc('X', 'V', 'I', 'D');
+        int codec = VideoWriter::fourcc('X','V','I','D');
         Size frameSize(it->videoCapture.get(CAP_PROP_FRAME_WIDTH), it->videoCapture.get(CAP_PROP_FRAME_HEIGHT));
 
-        it->videoWriter.open(cameraDirPath.toStdString() + "/video_" + cameraname.toStdString() + ".avi", codec, 15, frameSize);
+        it->videoWriter.open(cameraDirPath.toStdString() + "/video_" + cameraname.toStdString() + ".avi", codec, 30, frameSize);
 
         if (it->videoWriter.isOpened()) {
             qDebug() << "VideoWriter opened successfully.";
@@ -110,7 +110,7 @@ void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameranam
     });
 
     // Start the timer with a timeout (adjust the timeout value as needed)
-    openTimer.start(5000);  // 5000 milliseconds (adjust as needed)
+    openTimer.start(300);  // 5000 milliseconds (adjust as needed)
 
     // Wait for the timer to finish
     while (openTimer.isActive()) {
@@ -172,6 +172,8 @@ void CameraHandler::CloseCamera(const QString &cameraname)
         it->videoCapture.release();
 
         it->videoWriter.release();
+
+        it->frameBuffer.clear();
 
         cameras.erase(it, cameras.end());
     }
@@ -275,20 +277,31 @@ void CameraHandler::updateFrames()
 void CameraHandler::processFrame(CameraInfo& camera)
 {
     // qDebug() << "Frame processing for " << camera.cameraname << " is running on thread" << QThread::currentThreadId();
+    QDateTime currentDateTime = QDateTime::currentDateTime();
+    // qDebug() << "Timestamp for frame from " << camera.cameraname << ": " << currentDateTime.time().toString();
+
     Mat frame;
     camera.videoCapture.read(frame);
 
     if (frame.empty() && !camera.isError) {
         qDebug() << "Error reading frame from " << camera.cameraname;
         camera.isError = true;
+        QImage placeholderImage(1, 1, QImage::Format_RGB32);
+        placeholderImage.fill(Qt::black);
+        camera.frameBuffer.append(qMakePair(placeholderImage, currentDateTime.time()));
     }
     else {
+        // qDebug() << "Timestamp for frame from " << camera.cameraname << ": " << timestamp << " milliseconds";
+
         // Update the latest frame with faces
         camera.latestFrame = matToImage(frame);
 
-        if (camera.videoWriter.isOpened()) {
-            camera.videoWriter.write(frame);
-        }
+        camera.frameBuffer.append(qMakePair(camera.latestFrame, currentDateTime.time()));
+        // qDebug() << "Current Index for " << camera.cameraname << " is " << camera.frameBuffer.length();
+
+        // if (camera.videoWriter.isOpened() and timestamp >= 1) {
+        //     camera.videoWriter.write(frame);
+        // }
     }
 
     emit frameUpdated(camera.latestFrame, camera.cameraname);
@@ -365,5 +378,27 @@ void CameraHandler::printConnectedCameras() const
     for (const CameraInfo& camera : cameras)
     {
         qDebug() << camera.cameraname;
+    }
+}
+
+QVector<QPair<QImage, QTime>> CameraHandler::getFrameBuffer(const QString& cameraname) const {
+    auto it = std::find_if(cameras.begin(), cameras.end(), [cameraname](const CameraInfo& camera) {
+        return camera.cameraname == cameraname;
+    });
+
+    if (it != cameras.end()) {
+        return it->frameBuffer;
+    }
+
+    return QVector<QPair<QImage, QTime>>(); // Return empty buffer if not found
+}
+
+void CameraHandler::clearFrameBuffer(const QString& cameraname) {
+    auto it = std::find_if(cameras.begin(), cameras.end(), [cameraname](const CameraInfo& camera) {
+        return camera.cameraname == cameraname;
+    });
+
+    if (it != cameras.end()) {
+        it->frameBuffer.clear();
     }
 }

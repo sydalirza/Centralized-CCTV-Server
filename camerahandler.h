@@ -26,6 +26,7 @@ public:
     void OpenCamera_single(const string &cameraUrl, const QString &cameraname);
     void CloseCamera(const QString &cameraname);
     void closeAllCameras();
+    void clearFrameBuffer(const QString &cameraname);
     void printConnectedCameras() const;
 
     const QImage& getLatestFrame(const QString &cameraname) const;
@@ -33,6 +34,7 @@ public:
     QString getCameraName(int index) const;
     string getCameraUrl(const QString& cameraname) const;
     bool getCameraError(const QString& cameraname) const;
+    QVector<QPair<QImage, QTime>> getFrameBuffer(const QString& cameraname) const;
 
 signals:
     void frameUpdated(const QImage& frame, const QString& cameraname);
@@ -44,6 +46,14 @@ private slots:
     void updateFrames();
 
 private:
+
+    //Rewinding stuff
+
+    struct FrameInfo{
+        QImage frame;
+        double timestamp;
+    };
+
     struct CameraInfo{
         VideoCapture videoCapture;
         QString cameraname;
@@ -52,6 +62,8 @@ private:
         bool isError = false;
         bool isReconnecting = false;
         VideoWriter videoWriter;
+        QVector<QPair<QImage, QTime>> frameBuffer;
+        int currentBufferIndex;
     };
 
     QTimer openTimer; //Camera Connection Timer

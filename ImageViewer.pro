@@ -14,8 +14,10 @@ SOURCES += \
         camerasettings.cpp \
         customlabel.cpp \
         facerecognition.cpp \
+        focusview.cpp \
         main.cpp \
         mainwindow.cpp \
+        rewindui.cpp \
         singleviewwidget.cpp
 
 TRANSLATIONS += \
@@ -31,7 +33,9 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 FORMS += \
     camerascreens.ui \
     camerasettings.ui \
+    focusview.ui \
     mainwindow.ui \
+    rewindui.ui \
     singleviewwidget.ui
 
 HEADERS += \
@@ -40,7 +44,9 @@ HEADERS += \
     camerasettings.h \
     customlabel.h \
     facerecognition.h \
+    focusview.h \
     mainwindow.h \
+    rewindui.h \
     singleviewwidget.h
 
 

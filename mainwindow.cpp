@@ -98,4 +98,3 @@ bool MainWindow::tab_already_open(const QString &tabname)
     return tabFound;
 
 }
-

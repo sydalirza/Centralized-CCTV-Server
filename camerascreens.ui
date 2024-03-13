@@ -29,7 +29,7 @@
      <property name="title">
       <string/>
      </property>
-     <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0,0,0,0,0,0,0">
+     <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0,0,0,0,0,0,0,0">
       <item>
        <widget class="QPushButton" name="previous_button">
         <property name="text">
@@ -61,6 +61,13 @@
        <widget class="QPushButton" name="addcamerabutton">
         <property name="text">
          <string>Add Camera</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="rewind_button">
+        <property name="text">
+         <string>Rewind Camera</string>
         </property>
        </widget>
       </item>

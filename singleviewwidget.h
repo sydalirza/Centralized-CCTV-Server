@@ -19,7 +19,7 @@ public slots:
     void updateImage(const QImage &frame);
     void openCamera(const std::string &cameraUrl, const QString &cameraName);
     void closeCamera();
-    Mat facedetection(Mat frame);
+    Mat facedetection(Mat &frame);
 
 
 protected:
@@ -35,7 +35,7 @@ private:
     Mat ImagetoMat(const QImage &image);
     QImage matToImage(const Mat &mat) const;
     bool detectfaces = false;
-
+    QTimer *timer;
 
 
 signals:

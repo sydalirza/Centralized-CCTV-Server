@@ -11,7 +11,6 @@
 #include <QTabWidget>
 #include <QThread>
 #include <QTimer>
-#include "singleviewwidget.h"
 
 CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
     : QWidget(parent), ui(new Ui::CameraScreens), parentWidget(parentWidget)
@@ -28,11 +27,12 @@ CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
     timer->start(500);
 
     connect(ui->addcamerabutton, &QPushButton::clicked, this, [this](){
-        // Replace "C:/Users/Yousuf Traders/Downloads/1.mp4" and "Camera 2" with appropriate values
-        addCamera("rtsp://admin:admin@192.168.1.6:8080/h264.sdp", "Camera 8");
+        addCamera("3.mp4", "Camera 1");
     });
 
     ui->closecamerabutton->setEnabled(false);
+
+    ui->rewind_button->setEnabled(false);
 }
 
 // Implementation of the initialization slot
@@ -87,7 +87,10 @@ void CameraScreens::onImageClicked()
         if (lastClickedLabel) {
             lastClickedLabel->setStyleSheet("");
             disconnect(ui->closecamerabutton, &QPushButton::clicked, nullptr, nullptr);
-        }
+            disconnect(ui->rewind_button, &QPushButton::clicked, nullptr, nullptr);
+            ui->closecamerabutton->setEnabled(false);
+            ui->rewind_button->setEnabled(false);
+            }
 
         lastClickedLabel = clickedLabel;
 
@@ -104,9 +107,21 @@ void CameraScreens::onImageClicked()
         {
             clickedLabel->setStyleSheet("border: 2px solid red;");
             ui->closecamerabutton->setEnabled(true);
+            ui->rewind_button->setEnabled(true);
             connect(ui->closecamerabutton, &QPushButton::clicked, this, [this, cameraName]() {
                 removeCamera(cameraName);
             });
+
+            connect(ui->rewind_button, &QPushButton::clicked, this, [this, cameraName]() {
+                RewindUI = new RewindUi(cameraName, cameraHandler.getFrameBuffer(cameraName),parentWidget);
+
+                QTabWidget* tabWidget = parentWidget->findChild<QTabWidget*>("tabWidget");
+                if (tabWidget) {
+                    int newIndex = tabWidget->addTab(RewindUI, cameraName);
+                    tabWidget->setCurrentIndex(newIndex);
+                }
+            });
+
         }
 
         // Print the name of the clicked camera
@@ -131,11 +146,13 @@ void CameraScreens::onImageDoubleClicked()
         }
 
         // Create a new singleViewWidget for the camera
-        singleViewWidget = new SingleViewWidget(parentWidget, cameraName, singlecameraUrl);
+        // singleViewWidget = new SingleViewWidget(parentWidget, cameraName, singlecameraUrl);
+
+        focusView = new FocusView(parentWidget, cameraName, singlecameraUrl);
 
         QTabWidget* tabWidget = parentWidget->findChild<QTabWidget*>("tabWidget");
         if (tabWidget) {
-            int newIndex = tabWidget->addTab(singleViewWidget, cameraName);
+            int newIndex = tabWidget->addTab(focusView, cameraName);
             tabWidget->setCurrentIndex(newIndex);
         }
     }
@@ -187,7 +204,7 @@ void CameraScreens::addCameraLabel(const QString& cameraName, int total_screens,
     CustomLabel* imageLabel = new CustomLabel(this);
     cameraLabelMap.insert(cameraName, imageLabel);
 
-    QPixmap defaultPixmap("E:/FYP/image1.png"); // Default
+    QPixmap defaultPixmap("E:/ImageViewer/loading.png"); // Default
     QPixmap blackPixmap(540, 330);  // Create a black pixmap with the desired size
     blackPixmap.fill(Qt::black);
 
@@ -216,6 +233,7 @@ void CameraScreens::addCameraLabel(const QString& cameraName, int total_screens,
 void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_screens)
 {
     ui->closecamerabutton->setEnabled(false);
+    ui->rewind_button->setEnabled(false);
     ui->addcamerabutton->setEnabled(false);
 
 
@@ -298,7 +316,7 @@ void CameraScreens::connectCameras()
 
     // Array of camera details (URL and name)
     const vector<std::pair<QString, QString>> cameras = {
-                                                         {"C:/Users/Yousuf Traders/Downloads/1.mp4", "Dining Room"}
+                                                        {"1.mp4", "Garage"}
                                                          };
 
 
