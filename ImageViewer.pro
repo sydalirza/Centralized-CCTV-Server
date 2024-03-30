@@ -1,4 +1,6 @@
-QT = core widgets
+QT       += core widgets
+QT       += multimedia
+QT       += multimediawidgets
 
 CONFIG += c++17 cmdline
 
@@ -7,10 +9,16 @@ CONFIG += c++17 cmdline
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+        camerahandler.cpp \
         camerascreens.cpp \
+        camerasettings.cpp \
         customlabel.cpp \
+        facerecognition.cpp \
+        focusview.cpp \
         main.cpp \
         mainwindow.cpp \
+        recordingworker.cpp \
+        rewindui.cpp \
         singleviewwidget.cpp
 
 TRANSLATIONS += \
@@ -25,11 +33,32 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 FORMS += \
     camerascreens.ui \
+    camerasettings.ui \
+    focusview.ui \
     mainwindow.ui \
+    rewindui.ui \
     singleviewwidget.ui
 
 HEADERS += \
+    camerahandler.h \
     camerascreens.h \
+    camerasettings.h \
     customlabel.h \
+    facerecognition.h \
+    focusview.h \
     mainwindow.h \
+    recordingworker.h \
+    rewindui.h \
     singleviewwidget.h
+
+
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/x64/vc16/lib/ -lopencv_world480
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/x64/vc16/lib/ -lopencv_world480d
+else:unix: LIBS += -L$$PWD/../OpenCV/opencv/build/x64/vc16/lib/ -lopencv_world480
+
+INCLUDEPATH += $$PWD/../OpenCV/opencv/build/include
+DEPENDPATH += $$PWD/../OpenCV/opencv/build/include
+
+DISTFILES += \
+    error.png
+

@@ -14,6 +14,7 @@
 #include <QDesktopServices>
 #include <QTabBar>
 #include <camerascreens.h>
+#include <camerasettings.h>
 #include <QScreen>
 #include <QGuiApplication>
 
@@ -24,7 +25,6 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     openDefaultTab();
     setFixedSize(QGuiApplication::primaryScreen()->availableSize());
-
 }
 
 MainWindow::~MainWindow()
@@ -54,7 +54,7 @@ void MainWindow::on_tab_button_1_clicked()
 void MainWindow::openDefaultTab()
 {
     CameraScreens *defaultTab = new CameraScreens(this, this);
-    int tabIndex = ui->tabWidget->addTab(defaultTab, "Default Tab");
+    int tabIndex = ui->tabWidget->addTab(defaultTab, "Main View");
     QTabBar* tabBar = ui->tabWidget->findChild<QTabBar*>();
     if (tabBar)
     {
@@ -67,8 +67,34 @@ void MainWindow::openDefaultTab()
     }
 }
 
-void MainWindow::on_pushButton_4_clicked()
+void MainWindow::on_close_button_clicked()
 {
     qApp->quit();
 }
 
+
+void MainWindow::on_cameras_button_clicked()
+{
+    if(!tab_already_open("Cameras"))
+    {
+        ui -> tabWidget -> addTab(new CameraSettings(), "Cameras");
+    }
+    else
+    {
+        qDebug() << "Tab Already Open";
+    }
+}
+
+bool MainWindow::tab_already_open(const QString &tabname)
+{
+    bool tabFound = false;
+    for (int i = 0; i < ui->tabWidget->count(); ++i) {
+        if (ui->tabWidget->tabText(i) == tabname) {
+            tabFound = true;
+            break;
+        }
+    }
+
+    return tabFound;
+
+}

@@ -25,11 +25,14 @@ private slots:
 
     void on_tabWidget_tabCloseRequested(int index);
     void openDefaultTab();
+    bool tab_already_open(const QString &tabname);
 
     void on_tab_button_1_clicked();
     void setMaxSizeBasedOnScreen();
 
-    void on_pushButton_4_clicked();
+    void on_close_button_clicked();
+
+    void on_cameras_button_clicked();
 
 private:
     Ui::MainWindow *ui;
