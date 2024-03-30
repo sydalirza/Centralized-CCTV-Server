@@ -11,6 +11,7 @@
 #include "opencv2/imgproc.hpp"
 #include "opencv2/videoio.hpp"
 #include "opencv2/objdetect.hpp"
+#include <QThread>
 
 using namespace std;
 using namespace cv;
@@ -37,4 +38,6 @@ private:
     bool detectfaces = true;
 
     Mat facedetection(Mat frame);
+
+    QThread workerThread;
 };

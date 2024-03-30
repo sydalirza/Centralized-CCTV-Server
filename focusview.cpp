@@ -1,11 +1,17 @@
 #include "focusview.h"
 #include <QDateTime>
 
-FocusView::FocusView(QWidget *parent, const QString& cameraName, const std::string& cameraUrl) : QWidget(parent) {
+FocusView::FocusView(QWidget *parent, const QString& cameraName, const std::string& cameraUrl) : QWidget(nullptr) {
+    this->moveToThread(&workerThread);
+
+    workerThread.start();
+
     QHBoxLayout *layout = new QHBoxLayout(this);
     label = new QLabel(this);
     label->setScaledContents(true);
     layout->addWidget(label);
+
+
 
     string faceClassifier = "C:/Users/Yousuf Traders/Downloads/opencv/sources/data/haarcascades/haarcascade_frontalface_alt2.xml";
 
@@ -28,18 +34,30 @@ FocusView::FocusView(QWidget *parent, const QString& cameraName, const std::stri
     connect(timer, &QTimer::timeout, this, &FocusView::updateFrame);
     connect(this, &QObject::destroyed, this, &FocusView::stopTimer);
     timer->start(66); // Update every 30 milliseconds (adjust as needed)
+
+    if (parent)
+        setParent(parent);
 }
 
 FocusView::~FocusView() {
     if (capture.isOpened()) {
         capture.release();
     }
+
+    stopTimer();
+    workerThread.quit();
+    workerThread.wait();
+
+    delete this;
+    qDebug() << "Focus View deleted";
+
 }
 
 void FocusView::stopTimer() {
     if (timer->isActive()) {
         timer->stop();
     }
+
 }
 
 void FocusView::updateFrame() {

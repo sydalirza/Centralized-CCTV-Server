@@ -27,7 +27,7 @@ CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
     timer->start(500);
 
     connect(ui->addcamerabutton, &QPushButton::clicked, this, [this](){
-        addCamera("3.mp4", "Camera 1");
+        addCamera("3.mp4", "Camera 2");
     });
 
     ui->closecamerabutton->setEnabled(false);
@@ -98,6 +98,10 @@ void CameraScreens::onImageClicked()
         QString cameraName = cameraLabelMap.key(clickedLabel);
 
 
+        // Print the name of the clicked camera
+        qDebug() << "Clicked Camera: " << cameraName;
+
+
         if(cameraHandler.getCameraError(cameraName))
         {
             qDebug() << cameraName << " is disconnected";
@@ -113,20 +117,18 @@ void CameraScreens::onImageClicked()
             });
 
             connect(ui->rewind_button, &QPushButton::clicked, this, [this, cameraName]() {
-                RewindUI = new RewindUi(cameraName, cameraHandler.getFrameBuffer(cameraName),parentWidget);
+
+                RewindUI = new RewindUi(cameraName, cameraHandler.getFrameBuffer(cameraName), parentWidget);
 
                 QTabWidget* tabWidget = parentWidget->findChild<QTabWidget*>("tabWidget");
                 if (tabWidget) {
                     int newIndex = tabWidget->addTab(RewindUI, cameraName);
                     tabWidget->setCurrentIndex(newIndex);
                 }
+
             });
 
         }
-
-        // Print the name of the clicked camera
-        qDebug() << "Clicked Camera: " << cameraName;
-
     }
 }
 
@@ -316,8 +318,11 @@ void CameraScreens::connectCameras()
 
     // Array of camera details (URL and name)
     const vector<std::pair<QString, QString>> cameras = {
-                                                        {"1.mp4", "Garage"}
-                                                         };
+                                                        // {"rtsp://192.168.1.9/live/ch00_0", "Garage"}
+                                                        {"3.mp4", "Camera 1"}
+                                                        /*{"rtsp://10.4.72.198:8080/h264.sdp", "Camera 2"}*/
+                                                        // {"rtsp://192.168.1.4:8080/h264.sdp", "Camera 2"}
+                                                        };
 
 
     connect(&cameraHandler, &CameraHandler::cameraOpened, this, &CameraScreens::handleCameraOpened);
@@ -346,12 +351,14 @@ void CameraScreens::addCamera(const QString& cameraUrl, const QString& cameraNam
 
 void CameraScreens::removeCamera(const QString& cameraName)
 {
-
     qDebug() << "Removing Camera: " << cameraName;
 
     // Close the camera
-    cameraLabelMap.remove(cameraName);
     cameraHandler.CloseCamera(cameraName);
+
+    if (cameraLabelMap.contains(cameraName)) {
+        cameraLabelMap.remove(cameraName);
+    }
 
     // Update the UI after removing the camera
     handleCameraClosed();

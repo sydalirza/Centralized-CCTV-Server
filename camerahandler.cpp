@@ -1,4 +1,6 @@
 #include "camerahandler.h"
+#include "recordingworker.h"
+
 #include <QDebug>
 #include <QImageReader>
 #include <QThread>
@@ -9,18 +11,22 @@
 CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this))
 {
     connect(timer, &QTimer::timeout, this, &CameraHandler::updateFrames);
-    timer->start(60); //FPS
+    timer->start(1); //FPS
+
+    string faceClassifier = "haarcascade_frontalface_alt2.xml";
+
+    if (!faceCascade.load(faceClassifier)) {
+        qDebug() << "Could not load the classifier";
+        QCoreApplication::exit(-1);
+    }
+
+    qDebug() << "Classifier Loaded!";
+
 
     QDir videoDir(videoFolder);
     if (!videoDir.exists()) {
         videoDir.mkpath(".");
     }
-
-    QString cascadePath = "C:/Users/Yousuf Traders/Downloads/opencv/sources/data/haarcascades/haarcascade_frontalface_default.xml";  // Change the path accordingly
-    if (!faceCascade.load(cascadePath.toStdString())) {
-        qWarning() << "Error loading face cascade.";
-    }
-
 }
 
 CameraHandler:: ~CameraHandler(){
@@ -252,11 +258,12 @@ void CameraHandler::updateFrames()
         }
         else {
             // Process frames for each camera concurrently
-            QFuture<void> future = QtConcurrent::run([this, &camera]() {
-                processFrame(camera);
-            });
+            // QFuture<void> future = QtConcurrent::run([this, &camera]() {
 
-            futures.append(future);
+            // });
+            processFrame(camera);
+
+            // futures.append(future);
         }
     }
 
@@ -269,41 +276,126 @@ void CameraHandler::updateFrames()
 
         watchers.append(watcher);
     }
-
-    // Note: Do not use waitForFinished() here
-    // Let the event loop handle the completion of futures asynchronously
 }
+
+Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
+
+    // Resize the input frame to a smaller size for faster processing
+    Mat resizedFrame;
+    constexpr double scale = 0.2; // Adjust the scale factor as needed
+    resize(frame, resizedFrame, Size(), scale, scale);
+
+    // Convert the resized frame to grayscale
+    Mat frame_gray;
+    cvtColor(resizedFrame, frame_gray, COLOR_BGR2GRAY);
+
+    // Detect faces in the resized grayscale frame
+    vector<Rect> faces;
+    faceCascade.detectMultiScale(frame_gray, faces);
+
+    // Check the number of detected faces
+    if (faces.empty())
+    {
+        if (camera.isRecording && camera.persondetected && camera.frameBuffer.length() >= camera.startFrameIndex + 100)
+        {
+            qDebug() << "Person has left the frame";
+            camera.endFrameIndex = camera.frameBuffer.length()-10;
+            qDebug() << "Start = " << camera.startFrameIndex << " End = " << camera.endFrameIndex << "Current = " << camera.frameBuffer.length();
+
+            RecordingWorker* worker = new RecordingWorker;
+
+            // Move the worker object to a separate thread
+            // Create a new thread
+            // Create a new thread
+            QThread* recordingThread = new QThread;
+
+            // Move the RecordingWorker instance to the new thread
+            worker -> moveToThread(recordingThread);
+
+            // Call recordvideo from the new thread using lambda function
+            QObject::connect(recordingThread, &QThread::started, [=]() {
+                worker -> recordvideo(camera.startFrameIndex, camera.endFrameIndex, camera.cameraname, camera.CameraRecording);
+            });
+
+            // Connect thread's finished signal to deleteLater() slot to clean up when the thread finishes
+            QObject::connect(recordingThread, &QThread::finished, recordingThread, &QThread::deleteLater);
+
+            // Start the thread
+            recordingThread->start();
+
+            // No faces detected, reset persondetected
+            camera.persondetected = false;
+            camera.isRecording = false;
+            camera.cooldowntime = camera.endFrameIndex;
+        }
+    }
+    else {
+        // At least one face detected
+        for (const Rect& face : faces)
+        {
+            // Draw rectangle around each detected face
+            rectangle(resizedFrame, face, Scalar(0, 0, 255), 1);
+        }
+
+        // Print a detection message based on the number of detected faces
+        if (faces.size() == 1 && !camera.persondetected && !camera.isRecording)
+        {
+            if (camera.frameBuffer.length() - camera.cooldowntime <= 200 && camera.cooldowntime != 0)
+            {
+                qDebug() << "Cooling down";
+            }
+            else
+            {
+                QDateTime currentDateTime = QDateTime::currentDateTime();
+                QString formattedDateTime = currentDateTime.toString("yyyy-MM-dd hh:mm:ss.zzz");
+                qDebug() << "Person detected in the " << camera.cameraname << " camera at " << formattedDateTime;
+                camera.persondetected = true;
+                if (camera.frameBuffer.length() >= 100 && !camera.isRecording)
+                {
+                    camera.startFrameIndex = camera.frameBuffer.length() - 100;
+                    camera.isRecording = true;
+                }
+                else if (camera.frameBuffer.length() < 100 && !camera.isRecording)
+                {
+                    camera.startFrameIndex = 0;
+                    camera.isRecording = true;
+                }
+            }
+
+        }
+    }
+
+    return resizedFrame;
+}
+
 
 void CameraHandler::processFrame(CameraInfo& camera)
 {
-    // qDebug() << "Frame processing for " << camera.cameraname << " is running on thread" << QThread::currentThreadId();
     QDateTime currentDateTime = QDateTime::currentDateTime();
-    // qDebug() << "Timestamp for frame from " << camera.cameraname << ": " << currentDateTime.time().toString();
-
     Mat frame;
     camera.videoCapture.read(frame);
 
     if (frame.empty() && !camera.isError) {
         qDebug() << "Error reading frame from " << camera.cameraname;
         camera.isError = true;
-        QImage placeholderImage(1, 1, QImage::Format_RGB32);
-        placeholderImage.fill(Qt::black);
-        camera.frameBuffer.append(qMakePair(placeholderImage, currentDateTime.time()));
+
+        Mat blackFrame(1, 1, CV_8UC3, cv::Scalar(0, 0, 0));
+        camera.frameBuffer.append(qMakePair(blackFrame, currentDateTime.time()));
+
+        // Append the frame buffer to CameraRecording with the current date
+        camera.CameraRecording.append(qMakePair(currentDateTime.date(), qMakePair(blackFrame, currentDateTime.time())));
     }
     else {
-        // qDebug() << "Timestamp for frame from " << camera.cameraname << ": " << timestamp << " milliseconds";
+        Mat AIframe = facedetection(frame, camera);
+        camera.latestFrame = matToImage(AIframe);
 
-        // Update the latest frame with faces
-        camera.latestFrame = matToImage(frame);
+        camera.frameBuffer.append(qMakePair(AIframe, currentDateTime.time()));
 
-        camera.frameBuffer.append(qMakePair(camera.latestFrame, currentDateTime.time()));
-        // qDebug() << "Current Index for " << camera.cameraname << " is " << camera.frameBuffer.length();
-
-        // if (camera.videoWriter.isOpened() and timestamp >= 1) {
-        //     camera.videoWriter.write(frame);
-        // }
+        // Append the frame buffer to CameraRecording with the current date
+        camera.CameraRecording.append(qMakePair(currentDateTime.date(), qMakePair(AIframe, currentDateTime.time())));
     }
 
+    serialize(camera);
     emit frameUpdated(camera.latestFrame, camera.cameraname);
 }
 
@@ -381,16 +473,16 @@ void CameraHandler::printConnectedCameras() const
     }
 }
 
-QVector<QPair<QImage, QTime>> CameraHandler::getFrameBuffer(const QString& cameraname) const {
+QVector<QPair<QDate, QPair<Mat, QTime>>> CameraHandler::getFrameBuffer(const QString& cameraname) const {
     auto it = std::find_if(cameras.begin(), cameras.end(), [cameraname](const CameraInfo& camera) {
         return camera.cameraname == cameraname;
     });
 
     if (it != cameras.end()) {
-        return it->frameBuffer;
+        return it->CameraRecording;
     }
 
-    return QVector<QPair<QImage, QTime>>(); // Return empty buffer if not found
+    return QVector<QPair<QDate, QPair<Mat, QTime>>>(); // Return empty buffer if not found
 }
 
 void CameraHandler::clearFrameBuffer(const QString& cameraname) {
@@ -402,3 +494,42 @@ void CameraHandler::clearFrameBuffer(const QString& cameraname) {
         it->frameBuffer.clear();
     }
 }
+
+void serializeMat(QDataStream &stream, const Mat &mat)
+{
+    // Convert the Mat object to a QByteArray for serialization
+    QByteArray matData;
+    QDataStream dataStream(&matData, QIODevice::WriteOnly);
+    dataStream << mat.cols << mat.rows << mat.type() << QByteArray((char*)mat.data, mat.total() * mat.elemSize());
+
+    // Serialize the QByteArray containing Mat data
+    stream << matData;
+}
+
+void CameraHandler::serialize(CameraInfo &camera)
+{
+    QFile file(camera.cameraname);
+    if (file.open(QIODevice::WriteOnly)) {
+        QDataStream out(&file);
+
+        // Serialize the number of frames in the frame buffer
+        out << camera.frameBuffer.size();
+
+        // Serialize each frame (Mat object) and its corresponding QTime
+        for (const auto& framePair : camera.frameBuffer) {
+            // Serialize the QTime
+            out << framePair.second;
+
+            // Serialize the Mat object
+            serializeMat(out, framePair.first);
+        }
+
+        file.close();
+    }
+    else
+    {
+        qDebug() << "Error opening file for writing:" << file.errorString();
+    }
+}
+
+

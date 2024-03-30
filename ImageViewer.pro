@@ -17,6 +17,7 @@ SOURCES += \
         focusview.cpp \
         main.cpp \
         mainwindow.cpp \
+        recordingworker.cpp \
         rewindui.cpp \
         singleviewwidget.cpp
 
@@ -46,6 +47,7 @@ HEADERS += \
     facerecognition.h \
     focusview.h \
     mainwindow.h \
+    recordingworker.h \
     rewindui.h \
     singleviewwidget.h
 

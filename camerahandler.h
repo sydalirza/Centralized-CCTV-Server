@@ -10,6 +10,8 @@
 #include <QThread>
 #include <QRunnable>
 #include <QThreadPool>
+#include <QFile>
+#include <QDataStream>
 
 using namespace std;
 using namespace cv;
@@ -34,7 +36,7 @@ public:
     QString getCameraName(int index) const;
     string getCameraUrl(const QString& cameraname) const;
     bool getCameraError(const QString& cameraname) const;
-    QVector<QPair<QImage, QTime>> getFrameBuffer(const QString& cameraname) const;
+    QVector<QPair<QDate, QPair<Mat, QTime>>> getFrameBuffer(const QString& cameraname) const;
 
 signals:
     void frameUpdated(const QImage& frame, const QString& cameraname);
@@ -62,8 +64,14 @@ private:
         bool isError = false;
         bool isReconnecting = false;
         VideoWriter videoWriter;
-        QVector<QPair<QImage, QTime>> frameBuffer;
+        QVector<QPair<QDate, QPair<Mat, QTime>>> CameraRecording;
+        QVector<QPair<Mat, QTime>> frameBuffer;
         int currentBufferIndex;
+        bool isRecording = false;
+        int startFrameIndex;
+        int endFrameIndex;
+        bool persondetected = false;
+        int cooldowntime = 0;
     };
 
     QTimer openTimer; //Camera Connection Timer
@@ -74,7 +82,10 @@ private:
     QImage matToImage(const Mat &mat) const;
     void reconnectCamera(CameraInfo& camera);
     void processFrame(CameraInfo& camera);
+    void serialize(CameraInfo& camera);
+    QVector<QPair<Mat, QTime>> deserialize(CameraInfo& camera);
 
+    Mat facedetection(Mat frame, CameraInfo &camera);
 
     const QString videoFolder = "Recordings";  // Added for video recording
     void initializeVideoWriter(const QString &cameraname);
