@@ -37,18 +37,3 @@ void RecordingWorker::recordvideo(int startFrameindex, int endFrameindex, const 
 
     qDebug() << "Video recording saved: " << fileName;
 }
-
-// Implementation for the metaObject function
-const QMetaObject *RecordingWorker::metaObject() const {
-    return QObject::metaObject();
-}
-
-// Implementation for the qt_metacast function
-void *RecordingWorker::qt_metacast(const char *className) {
-    return QObject::qt_metacast(className);
-}
-
-// Implementation for the qt_metacall function
-int RecordingWorker::qt_metacall(QMetaObject::Call call, int id, void **arguments) {
-    return QObject::qt_metacall(call, id, arguments);
-}

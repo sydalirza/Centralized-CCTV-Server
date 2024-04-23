@@ -53,6 +53,50 @@ void MainWindow::on_tab_button_1_clicked()
 
 void MainWindow::openDefaultTab()
 {
+    const vector<std::pair<QString, QString>> cameras = {
+        // {"rtsp://192.168.1.9/live/ch00_0", "Garage"}
+        {"3.mp4", "Camera 1"},
+        {"4.mp4", "Camera 2"}
+        /*{"rtsp://10.4.72.198:8080/h264.sdp", "Camera 2"}*/
+        // {"rtsp://192.168.1.4:8080/h264.sdp", "Camera 2"}
+    };
+
+    QVBoxLayout *cameraLayout = qobject_cast<QVBoxLayout*>(ui->cameranames->layout());
+    if (cameraLayout) {
+        // Add the camera buttons to the existing layout
+        for (const auto& camera : cameras) {
+            QPushButton *cameraButton = new QPushButton(camera.second);
+            cameraLayout->addWidget(cameraButton);
+
+            // Connect the button's clicked signal to open the corresponding camera tab
+            connect(cameraButton, &QPushButton::clicked, this, [=]() {
+                CameraScreens *cameraScreens = qobject_cast<CameraScreens*>(ui->tabWidget->currentWidget());
+                if (cameraScreens) {
+                    cameraScreens->addCamera(camera.first, camera.second);
+                }
+            });
+        }
+    } else {
+        qDebug() << "Error: cameranames layout is not a QVBoxLayout";
+    }
+
+    QVBoxLayout *layoutLayout = qobject_cast<QVBoxLayout*>(ui->layoutnames->layout());
+    if (layoutLayout) {
+        // Add the camera buttons to the existing layout
+        for (const auto& camera : cameras) {
+            QPushButton *cameraButton = new QPushButton(camera.second);
+            layoutLayout->addWidget(cameraButton);
+
+            // Connect the button's clicked signal to open the corresponding camera tab
+            connect(cameraButton, &QPushButton::clicked, this, [=]() {
+                qDebug() << "Button clicked for Camera " << camera.second;
+            });
+        }
+    } else {
+        qDebug() << "Error: cameranames layout is not a QVBoxLayout";
+    }
+
+
     CameraScreens *defaultTab = new CameraScreens(this, this);
     int tabIndex = ui->tabWidget->addTab(defaultTab, "Main View");
     QTabBar* tabBar = ui->tabWidget->findChild<QTabBar*>();

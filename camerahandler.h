@@ -13,6 +13,10 @@
 #include <QFile>
 #include <QDataStream>
 
+#include <opencv2/opencv.hpp>
+#include <opencv2/face.hpp>
+
+using namespace cv::face;
 using namespace std;
 using namespace cv;
 
@@ -94,6 +98,9 @@ private:
 
     Mat detectFaces(const cv::Mat &frame);
     cv::CascadeClassifier faceCascade; // Declare a CascadeClassifier member
+    // Load pre-trained face recognition model
+    Ptr<LBPHFaceRecognizer> recognizer = LBPHFaceRecognizer::create();
+
 
 };
 

@@ -12,9 +12,11 @@
 #include <QThread>
 #include <QTimer>
 
-CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget)
-    : QWidget(parent), ui(new Ui::CameraScreens), parentWidget(parentWidget)
+CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget, const vector<std::pair<QString, QString>> &cameras)
+    : QWidget(parent), ui(new Ui::CameraScreens), parentWidget(parentWidget), cameras(cameras)
 {
+
+
     ui->setupUi(this);
 
     connect(ui->next_button, &QPushButton::clicked, this, &CameraScreens::onNextClicked);
@@ -316,13 +318,13 @@ void CameraScreens::connectCameras()
 {
     qDebug() << "Connecting Cameras";
 
-    // Array of camera details (URL and name)
-    const vector<std::pair<QString, QString>> cameras = {
-                                                        // {"rtsp://192.168.1.9/live/ch00_0", "Garage"}
-                                                        {"3.mp4", "Camera 1"}
-                                                        /*{"rtsp://10.4.72.198:8080/h264.sdp", "Camera 2"}*/
-                                                        // {"rtsp://192.168.1.4:8080/h264.sdp", "Camera 2"}
-                                                        };
+    // // Array of camera details (URL and name)
+    // const vector<std::pair<QString, QString>> cameras = {
+    //                                                     // {"rtsp://192.168.1.9/live/ch00_0", "Garage"}
+    //                                                     {"3.mp4", "Camera 1"}
+    //                                                     /*{"rtsp://10.4.72.198:8080/h264.sdp", "Camera 2"}*/
+    //                                                     // {"rtsp://192.168.1.4:8080/h264.sdp", "Camera 2"}
+    //                                                     };
 
 
     connect(&cameraHandler, &CameraHandler::cameraOpened, this, &CameraScreens::handleCameraOpened);

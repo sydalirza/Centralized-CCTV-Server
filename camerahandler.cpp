@@ -5,7 +5,11 @@
 #include <QImageReader>
 #include <QThread>
 #include <QtConcurrent/QtConcurrent>
+#include <opencv2/opencv.hpp>
+#include <opencv2/face.hpp>
 
+using namespace cv;
+using namespace cv::face;
 
 
 CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this))
@@ -21,6 +25,8 @@ CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTim
     }
 
     qDebug() << "Classifier Loaded!";
+
+    recognizer->read("trained_model.yml");
 
 
     QDir videoDir(videoFolder);
@@ -282,8 +288,11 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
 
     // Resize the input frame to a smaller size for faster processing
     Mat resizedFrame;
-    constexpr double scale = 0.2; // Adjust the scale factor as needed
+    constexpr double scale = 0.07; // Adjust the scale factor as needed
     resize(frame, resizedFrame, Size(), scale, scale);
+
+    // Set confidence threshold
+    const double confidenceThreshold = 85.0; // Adjust this value as needed
 
     // Convert the resized frame to grayscale
     Mat frame_gray;
@@ -291,7 +300,12 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
 
     // Detect faces in the resized grayscale frame
     vector<Rect> faces;
-    faceCascade.detectMultiScale(frame_gray, faces);
+    double scaleFactor = 1.5; // Experiment with different values (e.g., 1.1, 1.2, etc.)
+    int minNeighbors = 3; // Experiment with different values (e.g., 3, 5, 7, etc.)
+    int flags = 0;
+    Size minSize(30, 30); // Experiment with different minimum sizes
+    Size maxSize(300, 300); // Experiment with different maximum sizes
+    faceCascade.detectMultiScale(frame_gray, faces, scaleFactor, minNeighbors, flags, minSize, maxSize);
 
     // Check the number of detected faces
     if (faces.empty())
@@ -333,12 +347,27 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
         // At least one face detected
         for (const Rect& face : faces)
         {
-            // Draw rectangle around each detected face
-            rectangle(resizedFrame, face, Scalar(0, 0, 255), 1);
+            // Extract face region
+            Mat faceROI = frame_gray(face);
+
+            // Perform face recognition
+            int label = -1;
+            double confidence = 0.0;
+            recognizer->predict(faceROI, label, confidence);
+
+            // Display recognized face label if confidence is above threshold
+            if (label != -1 && confidence < confidenceThreshold) {
+                // Draw green rectangle and put recognized label
+                rectangle(resizedFrame, face, Scalar(0, 255, 0), 1);
+            }
+            else {
+                // Draw red rectangle for unknown face or low-confidence prediction
+                rectangle(resizedFrame, face, Scalar(0, 0, 255), 1);
+            }
         }
 
         // Print a detection message based on the number of detected faces
-        if (faces.size() == 1 && !camera.persondetected && !camera.isRecording)
+        if (faces.size() >= 1 && !camera.persondetected && !camera.isRecording)
         {
             if (camera.frameBuffer.length() - camera.cooldowntime <= 200 && camera.cooldowntime != 0)
             {

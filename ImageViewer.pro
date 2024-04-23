@@ -56,9 +56,14 @@ win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/x64
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/x64/vc16/lib/ -lopencv_world480d
 else:unix: LIBS += -L$$PWD/../OpenCV/opencv/build/x64/vc16/lib/ -lopencv_world480
 
-INCLUDEPATH += $$PWD/../OpenCV/opencv/build/include
-DEPENDPATH += $$PWD/../OpenCV/opencv/build/include
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/install/x64/vc17/lib/ -lopencv_face480
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/install/x64/vc17/lib/ -lopencv_face480d
+else:unix: LIBS += -L$$PWD/../OpenCV/opencv/build/install/x64/vc17/lib/ -lopencv_face480
+
+
+
+INCLUDEPATH += $$PWD/../OpenCV/opencv/build/install/include
+DEPENDPATH += $$PWD/../OpenCV/opencv/build/install/include
 
 DISTFILES += \
     error.png
-

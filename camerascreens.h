@@ -20,8 +20,9 @@ class CameraScreens : public QWidget
     static const int MAX_RECONNECT_ATTEMPTS = 3;
 
 
+
 public:
-    explicit CameraScreens(QWidget *parent = nullptr, QWidget *parentWidget = nullptr);
+    explicit CameraScreens(QWidget *parent = nullptr, QWidget *parentWidget = nullptr, const vector<std::pair<QString, QString>> &cameras = {});
 
     void connectCameras();
     ~CameraScreens();
@@ -80,6 +81,7 @@ private:
     int currentWall = 16; // Set an initial value, adjust as needed
     int camerasPerWall = 16; // Set an initial value, adjust as needed
 
+    const vector<std::pair<QString, QString>> cameras;
     QVector<QLabel*> cameraLabels;  // Keep track of the QLabel widgets
     CameraHandler cameraHandler;    // Instance of CameraHandler
     CameraSettings cameraSettings;
