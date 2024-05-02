@@ -25,6 +25,13 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     openDefaultTab();
     setFixedSize(QGuiApplication::primaryScreen()->availableSize());
+    cameraScreens = qobject_cast<CameraScreens*>(ui->tabWidget->currentWidget());
+
+
+    cameraSettingsInstance = new CameraSettings(); // Create an instance of CameraSettings
+    connect(cameraSettingsInstance, &CameraSettings::add_camera, this, &MainWindow::update_camera_buttons);
+    connect(cameraSettingsInstance, &CameraSettings::delete_camera, this, &MainWindow::remove_camera_button);
+
 }
 
 MainWindow::~MainWindow()
@@ -38,7 +45,7 @@ void MainWindow::setMaxSizeBasedOnScreen()
     this->setMaximumSize(screenSize);
 
     // Set the initial size to be smaller than the screen size
-    this->resize(screenSize.width() * 0.8, screenSize.height() * 0.8);
+    // this->resize(screenSize.width() * 0.8, screenSize.height() * 0.8);
 }
 
 void MainWindow::on_tabWidget_tabCloseRequested(int index)
@@ -61,41 +68,9 @@ void MainWindow::openDefaultTab()
         // {"rtsp://192.168.1.4:8080/h264.sdp", "Camera 2"}
     };
 
-    QVBoxLayout *cameraLayout = qobject_cast<QVBoxLayout*>(ui->cameranames->layout());
-    if (cameraLayout) {
-        // Add the camera buttons to the existing layout
-        for (const auto& camera : cameras) {
-            QPushButton *cameraButton = new QPushButton(camera.second);
-            cameraLayout->addWidget(cameraButton);
-
-            // Connect the button's clicked signal to open the corresponding camera tab
-            connect(cameraButton, &QPushButton::clicked, this, [=]() {
-                CameraScreens *cameraScreens = qobject_cast<CameraScreens*>(ui->tabWidget->currentWidget());
-                if (cameraScreens) {
-                    cameraScreens->addCamera(camera.first, camera.second);
-                }
-            });
-        }
-    } else {
-        qDebug() << "Error: cameranames layout is not a QVBoxLayout";
+    for (const auto& camera : cameras){
+        update_camera_buttons(camera);
     }
-
-    QVBoxLayout *layoutLayout = qobject_cast<QVBoxLayout*>(ui->layoutnames->layout());
-    if (layoutLayout) {
-        // Add the camera buttons to the existing layout
-        for (const auto& camera : cameras) {
-            QPushButton *cameraButton = new QPushButton(camera.second);
-            layoutLayout->addWidget(cameraButton);
-
-            // Connect the button's clicked signal to open the corresponding camera tab
-            connect(cameraButton, &QPushButton::clicked, this, [=]() {
-                qDebug() << "Button clicked for Camera " << camera.second;
-            });
-        }
-    } else {
-        qDebug() << "Error: cameranames layout is not a QVBoxLayout";
-    }
-
 
     CameraScreens *defaultTab = new CameraScreens(this, this);
     int tabIndex = ui->tabWidget->addTab(defaultTab, "Main View");
@@ -111,6 +86,28 @@ void MainWindow::openDefaultTab()
     }
 }
 
+void MainWindow::update_camera_buttons(const std::pair<QString, QString> camera)
+{
+    QVBoxLayout *cameraLayout = qobject_cast<QVBoxLayout*>(ui->cameranames->layout());
+    if (cameraLayout) {
+        // Add the camera buttons to the existing layout
+        QPushButton *cameraButton = new QPushButton(camera.second);
+        cameraLayout->addWidget(cameraButton);
+
+            // Connect the button's clicked signal to open the corresponding camera tab
+        connect(cameraButton, &QPushButton::clicked, this, [=]()
+        {
+            // CameraScreens *cameraScreens = qobject_cast<CameraScreens*>(ui->tabWidget->currentWidget());
+                if (cameraScreens) {
+                    cameraScreens->addCamera(camera.first, camera.second);
+                }
+            });
+        }
+    else {
+        qDebug() << "Error: cameranames layout is not a QVBoxLayout";
+    }
+}
+
 void MainWindow::on_close_button_clicked()
 {
     qApp->quit();
@@ -121,7 +118,7 @@ void MainWindow::on_cameras_button_clicked()
 {
     if(!tab_already_open("Cameras"))
     {
-        ui -> tabWidget -> addTab(new CameraSettings(), "Cameras");
+        ui -> tabWidget -> addTab(cameraSettingsInstance, "Cameras");
     }
     else
     {
@@ -141,4 +138,25 @@ bool MainWindow::tab_already_open(const QString &tabname)
 
     return tabFound;
 
+}
+
+void MainWindow::remove_camera_button(const QString &cameraName)
+{
+    QVBoxLayout *cameraLayout = qobject_cast<QVBoxLayout*>(ui->cameranames->layout());
+    if (cameraLayout) {
+        if (cameraScreens) {
+            cameraScreens->removeCamera(cameraName);
+        }
+        // Find the button corresponding to the camera name and remove it from the layout
+        for (int i = 0; i < cameraLayout->count(); ++i) {
+            QPushButton *button = qobject_cast<QPushButton*>(cameraLayout->itemAt(i)->widget());
+            if (button && button->text() == cameraName) {
+                cameraLayout->removeWidget(button);
+                delete button;
+                break; // Assuming each camera name is unique, so we can exit the loop after finding and removing the button
+            }
+        }
+    } else {
+        qDebug() << "Error: cameranames layout is not a QVBoxLayout";
+    }
 }

@@ -6,6 +6,8 @@
 #include<QGridLayout>
 #include <QMainWindow>
 #include <QLabel>  // Add this line
+#include "camerasettings.h"
+#include "camerascreens.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -24,18 +26,29 @@ protected:
 private slots:
 
     void on_tabWidget_tabCloseRequested(int index);
+
     void openDefaultTab();
+
     bool tab_already_open(const QString &tabname);
 
     void on_tab_button_1_clicked();
+
     void setMaxSizeBasedOnScreen();
 
     void on_close_button_clicked();
 
     void on_cameras_button_clicked();
 
+    void update_camera_buttons(const std::pair<QString, QString> camera);
+
+    void remove_camera_button(const QString &cameraName);
+
 private:
     Ui::MainWindow *ui;
+
+    CameraSettings *cameraSettingsInstance = nullptr;
+    CameraScreens *cameraScreens = nullptr;
+
 };
 
 #endif // MAINWINDOW_H

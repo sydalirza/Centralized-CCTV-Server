@@ -1,6 +1,8 @@
 QT       += core widgets
 QT       += multimedia
 QT       += multimediawidgets
+QT       += widgets
+QT       += sql
 
 CONFIG += c++17 cmdline
 
