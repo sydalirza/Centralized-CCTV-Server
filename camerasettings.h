@@ -33,15 +33,27 @@ private slots:
 
     void update_table();
 
+    void update_log_table();
+
     void on_connectedcameras_tableView_clicked(const QModelIndex &index);
 
     void on_tableitem_edit_clicked();
 
     void on_tableitem_delete_clicked();
 
+    void on_update_pushButton_clicked();
+
+    void populate_camera_names();
+
+    void on_applyfilter_button_clicked();
+
+    void openFile(const QModelIndex &index);
+
 private:
     Ui::CameraSettings *ui;
     QSqlTableModel *model;
+    QSqlTableModel *logModel;
+    QSqlDatabase db;
     bool rtsp = false;
     bool mp4 = false;
 

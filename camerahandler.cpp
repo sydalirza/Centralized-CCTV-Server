@@ -4,9 +4,14 @@
 #include <QDebug>
 #include <QImageReader>
 #include <QThread>
+#include <QMessageBox>
+#include <QProgressDialog>
 #include <QtConcurrent/QtConcurrent>
 #include <opencv2/opencv.hpp>
 #include <opencv2/face.hpp>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
 
 using namespace cv;
 using namespace cv::face;
@@ -32,6 +37,26 @@ CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTim
     QDir videoDir(videoFolder);
     if (!videoDir.exists()) {
         videoDir.mkpath(".");
+    }
+
+    db = QSqlDatabase::addDatabase("QSQLITE", "cameras_connection"); // Specify a unique connection name
+    db.setDatabaseName("cameras.db");
+
+    // Open the database connection
+    if (!db.open()) {
+        qDebug() << "Error: Failed to open the database.";
+    } else {
+        // Create the 'camera_logs' table if it doesn't exist
+        QSqlQuery query(db); // Pass the database connection to QSqlQuery constructor
+        if (!query.exec("CREATE TABLE IF NOT EXISTS camera_logs ("
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                        "camera_name TEXT,"
+                        "file_name TEXT,"
+                        "start_time TEXT,"
+                        "end_time TEXT"
+                        ")")) {
+            qDebug() << "Error creating table:" << query.lastError().text();
+        }
     }
 }
 
@@ -89,6 +114,7 @@ void CameraHandler::initializeVideoWriter(const QString &cameraname)
 
 void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameraname)
 {
+
     for (const auto& camera : cameras)
     {
         if (camera.cameraname == cameraname)
@@ -109,9 +135,23 @@ void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameranam
         VideoCapture videoCapture(cameraUrl, CAP_FFMPEG);
         if (videoCapture.isOpened()) {
             CameraInfo newcamera;
+
             newcamera.videoCapture = videoCapture;
             newcamera.cameraname = cameraname;
             newcamera.cameraUrl = cameraUrl;
+
+            QString filePath = cameraname;
+            if (QFile::exists(filePath)) {
+                // Ask the user if they want to reload the camera
+                QMessageBox::StandardButton reply;
+                reply = QMessageBox::question(nullptr, "Reload Camera", "A serialized file for this camera already exists. Do you want to reload the camera from the serialized file?",
+                                              QMessageBox::Yes|QMessageBox::No);
+                if (reply == QMessageBox::Yes) {
+                    // User chose not to reload, so just return
+                    deserialize(newcamera);
+                }
+            }
+
 
             qDebug() << "Opening " << cameraname;
 
@@ -288,7 +328,7 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
 
     // Resize the input frame to a smaller size for faster processing
     Mat resizedFrame;
-    constexpr double scale = 0.07; // Adjust the scale factor as needed
+    constexpr double scale = 0.3; // Adjust the scale factor as needed
     resize(frame, resizedFrame, Size(), scale, scale);
 
     // Set confidence threshold
@@ -300,7 +340,7 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
 
     // Detect faces in the resized grayscale frame
     vector<Rect> faces;
-    double scaleFactor = 1.5; // Experiment with different values (e.g., 1.1, 1.2, etc.)
+    double scaleFactor = 1.1; // Experiment with different values (e.g., 1.1, 1.2, etc.)
     int minNeighbors = 3; // Experiment with different values (e.g., 3, 5, 7, etc.)
     int flags = 0;
     Size minSize(30, 30); // Experiment with different minimum sizes
@@ -320,7 +360,6 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
 
             // Move the worker object to a separate thread
             // Create a new thread
-            // Create a new thread
             QThread* recordingThread = new QThread;
 
             // Move the RecordingWorker instance to the new thread
@@ -328,7 +367,7 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
 
             // Call recordvideo from the new thread using lambda function
             QObject::connect(recordingThread, &QThread::started, [=]() {
-                worker -> recordvideo(camera.startFrameIndex, camera.endFrameIndex, camera.cameraname, camera.CameraRecording);
+                worker -> recordvideo(camera.startFrameIndex, camera.endFrameIndex, camera.cameraname, camera.CameraRecording, db);
             });
 
             // Connect thread's finished signal to deleteLater() slot to clean up when the thread finishes
@@ -424,7 +463,7 @@ void CameraHandler::processFrame(CameraInfo& camera)
         camera.CameraRecording.append(qMakePair(currentDateTime.date(), qMakePair(AIframe, currentDateTime.time())));
     }
 
-    serialize(camera);
+    queueSerializationTask(camera);
     emit frameUpdated(camera.latestFrame, camera.cameraname);
 }
 
@@ -524,6 +563,14 @@ void CameraHandler::clearFrameBuffer(const QString& cameraname) {
     }
 }
 
+void CameraHandler::queueSerializationTask(CameraInfo &camera)
+{
+    // Queue a task to serialize the frame buffer data
+    QThreadPool::globalInstance()->start([=]() {
+        serialize(camera);
+    });
+}
+
 void serializeMat(QDataStream &stream, const Mat &mat)
 {
     // Convert the Mat object to a QByteArray for serialization
@@ -535,7 +582,22 @@ void serializeMat(QDataStream &stream, const Mat &mat)
     stream << matData;
 }
 
-void CameraHandler::serialize(CameraInfo &camera)
+void deserializeMat(QDataStream &stream, Mat &mat)
+{
+    // Deserialize the Mat object from the QByteArray
+    QByteArray matData;
+    stream >> matData;
+
+    QDataStream dataStream(matData);
+    int cols, rows, type;
+    dataStream >> cols >> rows >> type;
+
+    mat = Mat(rows, cols, type);
+    dataStream.readRawData((char*)mat.data, mat.total() * mat.elemSize());
+}
+
+
+void CameraHandler::serialize(const CameraInfo &camera)
 {
     QFile file(camera.cameraname);
     if (file.open(QIODevice::WriteOnly)) {
@@ -545,12 +607,14 @@ void CameraHandler::serialize(CameraInfo &camera)
         out << camera.frameBuffer.size();
 
         // Serialize each frame (Mat object) and its corresponding QTime
-        for (const auto& framePair : camera.frameBuffer) {
+        for (const auto& framePair : camera.CameraRecording) {
+            out << framePair.first;
+
             // Serialize the QTime
-            out << framePair.second;
+            out << framePair.second.second;
 
             // Serialize the Mat object
-            serializeMat(out, framePair.first);
+            serializeMat(out, framePair.second.first);
         }
 
         file.close();
@@ -561,4 +625,59 @@ void CameraHandler::serialize(CameraInfo &camera)
     }
 }
 
+void CameraHandler::deserialize(CameraInfo &camera)
+{
+    qDebug() << camera.cameraname;
+    QFile file(camera.cameraname);
+    if (file.open(QIODevice::ReadOnly)) {
+        QDataStream in(&file);
+        // Get the size of the file for progress calculation
+        qint64 fileSize = file.size();
 
+        // Initialize progress indicator
+        QProgressDialog progressDialog("Deserializing...", "Cancel", 0, 100);
+        progressDialog.setWindowModality(Qt::WindowModal);
+
+        // Clear existing data in the CameraRecording buffer
+        // camera.CameraRecording.clear();
+
+        // Deserialize the number of frames in the frame buffer
+        int numFrames;
+        in >> numFrames;
+
+        qint64 bytesRead = sizeof(numFrames);
+
+        // Deserialize each frame (Mat object) and its corresponding QTime
+        for (int i = 0; i < numFrames; ++i) {
+            if (progressDialog.wasCanceled())
+                break;
+
+            qDebug() << "lol1";
+            QDate date;
+            in >> date;
+            bytesRead += sizeof(date);
+
+            QTime time;
+            in >> time;
+            bytesRead += sizeof(time);
+
+            Mat frame;
+            deserializeMat(in, frame);
+            bytesRead += frame.total() * frame.elemSize();
+
+            // Append the frame and its corresponding date to the CameraRecording buffer
+            camera.CameraRecording.append(qMakePair(date, qMakePair(frame, time)));
+
+            // Update progress
+            int progress = static_cast<int>((bytesRead * 100) / fileSize);
+            progressDialog.setValue(progress);
+        }
+
+        file.close();
+
+        progressDialog.setValue(100); // Ensure progress reaches 100% at the end
+    }
+    else {
+        qDebug() << "Error opening file for reading:" << file.errorString();
+    }
+}

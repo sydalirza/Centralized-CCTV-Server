@@ -12,6 +12,9 @@
 #include <QThreadPool>
 #include <QFile>
 #include <QDataStream>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/face.hpp>
@@ -86,8 +89,11 @@ private:
     QImage matToImage(const Mat &mat) const;
     void reconnectCamera(CameraInfo& camera);
     void processFrame(CameraInfo& camera);
-    void serialize(CameraInfo& camera);
-    QVector<QPair<Mat, QTime>> deserialize(CameraInfo& camera);
+
+    void queueSerializationTask(CameraInfo& camera);
+    void serialize(const CameraInfo& camera);
+    void deserialize(CameraInfo& camera);
+
 
     Mat facedetection(Mat frame, CameraInfo &camera);
 
@@ -100,6 +106,8 @@ private:
     cv::CascadeClassifier faceCascade; // Declare a CascadeClassifier member
     // Load pre-trained face recognition model
     Ptr<LBPHFaceRecognizer> recognizer = LBPHFaceRecognizer::create();
+
+    QSqlDatabase db;
 
 
 };

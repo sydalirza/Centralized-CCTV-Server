@@ -36,8 +36,6 @@ private:
     bool persondetected = false;
     VideoWriter videoWriter;
     bool detectfaces = true;
-
-    Mat facedetection(Mat frame);
-
+    QString cameraUrl;
     QThread workerThread;
 };
