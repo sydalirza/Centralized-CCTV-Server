@@ -33,12 +33,6 @@ CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTim
 
     recognizer->read("trained_model.yml");
 
-
-    QDir videoDir(videoFolder);
-    if (!videoDir.exists()) {
-        videoDir.mkpath(".");
-    }
-
     db = QSqlDatabase::addDatabase("QSQLITE", "cameras_connection"); // Specify a unique connection name
     db.setDatabaseName("cameras.db");
 
@@ -75,42 +69,25 @@ void CameraHandler::closeAllCameras()
     cameras.clear();
 }
 
-void CameraHandler::initializeVideoWriter(const QString &cameraname)
-{
-    // Find the camera with the specified name
-    auto it = std::find_if(cameras.begin(), cameras.end(), [cameraname](const CameraInfo &camera) {
-        return camera.cameraname == cameraname;
-    });
+// void CameraHandler::initializeVideoWriter(const QString &cameraname)
+// {
+//     // Set up the directory path for the camera
+//     QString cameraDirPath = videoFolder + "/" + cameraname;
 
-    if (it != cameras.end()) {
-        // Set up the directory path for the camera
-        QString cameraDirPath = videoFolder + "/" + cameraname;
+//     // Check if the directory already exists
+//     QDir cameraDir(cameraDirPath);
+//     if (cameraDir.exists()) {
+//         qDebug() << "Directory already exists: " << cameraDirPath;
+//         return; // Directory already exists, no need to create it again
+//     }
 
-        // Create the directory for the camera if it doesn't exist
-        QDir cameraDir(cameraDirPath);
-        if (!cameraDir.exists()) {
-            if (cameraDir.mkpath(cameraDirPath)) {
-                qDebug() << "Directory created successfully: " << cameraDirPath;
-            } else {
-                qDebug() << "Error: Failed to create directory: " << cameraDirPath;
-            }
-        }
-
-        // Set up VideoWriter with codec XVID and 20 FPS
-        int codec = VideoWriter::fourcc('X','V','I','D');
-        Size frameSize(it->videoCapture.get(CAP_PROP_FRAME_WIDTH), it->videoCapture.get(CAP_PROP_FRAME_HEIGHT));
-
-        it->videoWriter.open(cameraDirPath.toStdString() + "/video_" + cameraname.toStdString() + ".avi", codec, 30, frameSize);
-
-        if (it->videoWriter.isOpened()) {
-            qDebug() << "VideoWriter opened successfully.";
-        } else {
-            qDebug() << "Error: VideoWriter failed to open!";
-        }
-    } else {
-        qDebug() << "Camera not found: " << cameraname;
-    }
-}
+//     // Create the directory for the camera
+//     if (cameraDir.mkpath(cameraDirPath)) {
+//         qDebug() << "Directory created successfully: " << cameraDirPath;
+//     } else {
+//         qDebug() << "Error: Failed to create directory: " << cameraDirPath;
+//     }
+// }
 
 void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameraname)
 {
@@ -132,7 +109,8 @@ void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameranam
     // Connect the timer timeout to a lambda function for camera opening attempt
     QObject::connect(&openTimer, &QTimer::timeout, [this, cameraUrl, cameraname]() {
         // Attempt to open the camera
-        VideoCapture videoCapture(cameraUrl, CAP_FFMPEG);
+        cv::VideoCapture videoCapture(cameraUrl, cv::CAP_FFMPEG);
+
         if (videoCapture.isOpened()) {
             CameraInfo newcamera;
 
@@ -152,12 +130,19 @@ void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameranam
                 }
             }
 
+            // Ask the user if they want to arm the camera
+            QMessageBox::StandardButton reply;
+            reply = QMessageBox::question(nullptr, "Arm Camera?", "Do you want to arm the camera?",
+                                              QMessageBox::Yes|QMessageBox::No);
+            if (reply == QMessageBox::Yes) {
+                newcamera.armed = true;
+            }
 
             qDebug() << "Opening " << cameraname;
 
             cameras.push_back(newcamera);
 
-            initializeVideoWriter(cameraname);
+            // initializeVideoWriter(cameraname);
         }
     });
 
@@ -225,9 +210,40 @@ void CameraHandler::CloseCamera(const QString &cameraname)
 
         it->videoWriter.release();
 
-        it->frameBuffer.clear();
+        // Capture CameraRecording before erasing the camera
+        QVector<QPair<QDate, QPair<Mat, QTime>>> cameraRecording = it->CameraRecording;
+
+        it->CameraRecording.clear();
 
         cameras.erase(it, cameras.end());
+
+        qDebug() << "Saving frames";
+
+        int startFrameindex = 0;
+        qDebug() << startFrameindex;
+        int endFrameindex = cameraRecording.size()-1;
+        qDebug() << endFrameindex;
+
+        RecordingWorker* worker = new RecordingWorker;
+
+        // Move the worker object to a separate thread
+        // Create a new thread
+        QThread* recordingThread = new QThread;
+
+        // Move the RecordingWorker instance to the new thread
+        worker -> moveToThread(recordingThread);
+
+        // Call recordvideo from the new thread using lambda function
+        QObject::connect(recordingThread, &QThread::started, [=]() {
+            worker -> recordvideo(startFrameindex, endFrameindex, cameraname, cameraRecording);
+        });
+
+        // Connect thread's finished signal to deleteLater() slot to clean up when the thread finishes
+        QObject::connect(recordingThread, &QThread::finished, recordingThread, &QThread::deleteLater);
+
+        // Start the thread
+        recordingThread->start();
+
     }
 }
 
@@ -263,7 +279,8 @@ const QImage &CameraHandler::getLatestFrame(const QString &cameraname) const
 void CameraHandler::reconnectCamera(CameraInfo& camera)
 {
     // Attempt to reopen the camera
-    camera.videoCapture.open(camera.cameraUrl, CAP_FFMPEG);
+    camera.videoCapture.open(camera.cameraUrl, cv::CAP_FFMPEG);
+    qDebug() << "here";
 
     // If the reconnection was successful, set the flag to false
     if (camera.videoCapture.isOpened()) {
@@ -325,11 +342,14 @@ void CameraHandler::updateFrames()
 }
 
 Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
-
     // Resize the input frame to a smaller size for faster processing
     Mat resizedFrame;
-    constexpr double scale = 0.3; // Adjust the scale factor as needed
-    resize(frame, resizedFrame, Size(), scale, scale);
+    resize(frame, resizedFrame, Size(), camera.scaleFactor, camera.scaleFactor);
+
+    if(!camera.armed)
+    {
+        return resizedFrame;
+    }
 
     // Set confidence threshold
     const double confidenceThreshold = 85.0; // Adjust this value as needed
@@ -340,12 +360,10 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
 
     // Detect faces in the resized grayscale frame
     vector<Rect> faces;
-    double scaleFactor = 1.1; // Experiment with different values (e.g., 1.1, 1.2, etc.)
-    int minNeighbors = 3; // Experiment with different values (e.g., 3, 5, 7, etc.)
+    double scaleFactor = 1.9; // Experiment with different values (e.g., 1.1, 1.2, etc.)
+    int minNeighbors = 1; // Experiment with different values (e.g., 3, 5, 7, etc.)
     int flags = 0;
-    Size minSize(30, 30); // Experiment with different minimum sizes
-    Size maxSize(300, 300); // Experiment with different maximum sizes
-    faceCascade.detectMultiScale(frame_gray, faces, scaleFactor, minNeighbors, flags, minSize, maxSize);
+    faceCascade.detectMultiScale(frame_gray, faces, scaleFactor, minNeighbors, flags);
 
     // Check the number of detected faces
     if (faces.empty())
@@ -410,7 +428,7 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
         {
             if (camera.frameBuffer.length() - camera.cooldowntime <= 200 && camera.cooldowntime != 0)
             {
-                qDebug() << "Cooling down";
+
             }
             else
             {
@@ -441,6 +459,7 @@ void CameraHandler::processFrame(CameraInfo& camera)
 {
     QDateTime currentDateTime = QDateTime::currentDateTime();
     Mat frame;
+    Mat newframe;
     camera.videoCapture.read(frame);
 
     if (frame.empty() && !camera.isError) {
@@ -454,13 +473,14 @@ void CameraHandler::processFrame(CameraInfo& camera)
         camera.CameraRecording.append(qMakePair(currentDateTime.date(), qMakePair(blackFrame, currentDateTime.time())));
     }
     else {
-        Mat AIframe = facedetection(frame, camera);
-        camera.latestFrame = matToImage(AIframe);
+        newframe = facedetection(frame, camera);
 
-        camera.frameBuffer.append(qMakePair(AIframe, currentDateTime.time()));
+        camera.latestFrame = matToImage(newframe);
+
+        camera.frameBuffer.append(qMakePair(newframe, currentDateTime.time()));
 
         // Append the frame buffer to CameraRecording with the current date
-        camera.CameraRecording.append(qMakePair(currentDateTime.date(), qMakePair(AIframe, currentDateTime.time())));
+        camera.CameraRecording.append(qMakePair(currentDateTime.date(), qMakePair(newframe, currentDateTime.time())));
     }
 
     queueSerializationTask(camera);
@@ -530,6 +550,73 @@ string CameraHandler::getCameraUrl(const QString &cameraName) const
         return ""; // or some default value for invalid cameraName
     }
 }
+
+bool CameraHandler::getArmedStatus(const QString &cameraName) const
+{
+    auto it = find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
+        return camera.cameraname == cameraName;
+    });
+
+    if (it != cameras.end())
+    {
+        return it->armed;
+    }
+    else
+    {
+        return ""; // or some default value for invalid cameraName
+    }
+}
+
+double CameraHandler::getScalefactor(const QString &cameraName)
+{
+    auto it = find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
+        return camera.cameraname == cameraName;
+    });
+
+    if (it != cameras.end())
+    {
+        return it->scaleFactor;
+    }
+    else
+    {
+        return 0.07; // or some default value for invalid cameraName
+    }
+}
+
+
+void CameraHandler::changeCamerastatus(const QString &cameraName)
+{
+    auto it = find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
+        return camera.cameraname == cameraName;
+    });
+
+    if (it != cameras.end())
+    {
+        bool isarmed = it->armed;
+        if (isarmed)
+        {
+            it->armed = false;
+        }
+        else
+        {
+            it->armed = true;
+        }
+    }
+}
+
+void CameraHandler::changeScalefactor(double value, const QString &cameraName)
+{
+    auto it = find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
+        return camera.cameraname == cameraName;
+    });
+
+    if (it != cameras.end())
+    {
+        it->scaleFactor = value;
+    }
+}
+
+
 
 void CameraHandler::printConnectedCameras() const
 {

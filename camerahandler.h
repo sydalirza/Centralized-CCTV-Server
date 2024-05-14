@@ -44,6 +44,10 @@ public:
     string getCameraUrl(const QString& cameraname) const;
     bool getCameraError(const QString& cameraname) const;
     QVector<QPair<QDate, QPair<Mat, QTime>>> getFrameBuffer(const QString& cameraname) const;
+    void changeCamerastatus(const QString &cameraName);
+    bool getArmedStatus(const QString &cameraName) const;
+    double getScalefactor(const QString &cameraName);
+    void changeScalefactor(double value, const QString &cameraName);
 
 signals:
     void frameUpdated(const QImage& frame, const QString& cameraname);
@@ -79,6 +83,8 @@ private:
         int endFrameIndex;
         bool persondetected = false;
         int cooldowntime = 0;
+        bool armed = false;
+        double scaleFactor = 0.07;
     };
 
     QTimer openTimer; //Camera Connection Timer
@@ -97,7 +103,7 @@ private:
 
     Mat facedetection(Mat frame, CameraInfo &camera);
 
-    const QString videoFolder = "Recordings";  // Added for video recording
+    const QString videoFolder = "Recordings1";  // Added for video recording
     void initializeVideoWriter(const QString &cameraname);
     void closeVideoWriter(const QString &cameraname);
 
@@ -109,7 +115,7 @@ private:
 
     QSqlDatabase db;
 
-
+    bool cameras_armed = false;
 };
 
 #endif

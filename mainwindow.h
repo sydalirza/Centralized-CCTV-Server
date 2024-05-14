@@ -46,6 +46,12 @@ private slots:
     vector<std::pair<QString, QString>> getAllCameras();
 
 
+    void on_one_layout_clicked();
+
+    void on_four_layout_clicked();
+
+    void on_sixteen_layout_clicked();
+
 private:
     Ui::MainWindow *ui;
 

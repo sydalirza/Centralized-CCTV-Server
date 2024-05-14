@@ -19,22 +19,21 @@ CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget, const vecto
 
     ui->setupUi(this);
 
-    connect(ui->next_button, &QPushButton::clicked, this, &CameraScreens::onNextClicked);
-    connect(ui->previous_button, &QPushButton::clicked, this, &CameraScreens::onPreviousClicked);
-
     updateCameraLayout(16, camerasPerWall); // Blank
 
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &CameraScreens::initialize);
     timer->start(500);
 
-    connect(ui->addcamerabutton, &QPushButton::clicked, this, [this](){
-        addCamera("3.mp4", "Camera 2");
-    });
+    ui->camerastatusbutton->setVisible(false);
 
     ui->closecamerabutton->setEnabled(false);
 
     ui->rewind_button->setEnabled(false);
+
+    ui->scale_factor_slider->setEnabled(false);
+
+    ui->scale_factor_slider->setMinimum(1);
 }
 
 // Implementation of the initialization slot
@@ -88,10 +87,18 @@ void CameraScreens::onImageClicked()
     if (clickedLabel && clickedLabel != lastClickedLabel) {
         if (lastClickedLabel) {
             lastClickedLabel->setStyleSheet("");
+
             disconnect(ui->closecamerabutton, &QPushButton::clicked, nullptr, nullptr);
             disconnect(ui->rewind_button, &QPushButton::clicked, nullptr, nullptr);
+            disconnect(ui->camerastatusbutton, &QPushButton::clicked, nullptr, nullptr);
+            disconnect(ui->scale_factor_slider, &QSlider::valueChanged, nullptr, nullptr);
+
+
             ui->closecamerabutton->setEnabled(false);
+            ui->camerastatusbutton->setVisible(false);
+            ui->camerastatusbutton->setText("Camera Status:");
             ui->rewind_button->setEnabled(false);
+            ui->scale_factor_slider->setEnabled(false);
             }
 
         lastClickedLabel = clickedLabel;
@@ -114,8 +121,49 @@ void CameraScreens::onImageClicked()
             clickedLabel->setStyleSheet("border: 2px solid red;");
             ui->closecamerabutton->setEnabled(true);
             ui->rewind_button->setEnabled(true);
+            ui->camerastatusbutton->setVisible(true);
+            ui->camerastatusbutton->setEnabled(true);
+            ui->scale_factor_slider->setEnabled(true);
+
+            // Get the scale factor for the clicked camera
+            double scaleFactor = cameraHandler.getScalefactor(cameraName);
+
+            // Calculate the position of the slider knob based on the scale factor value and the range of the slider
+            int sliderValue = static_cast<int>(scaleFactor * ui->scale_factor_slider->maximum());
+
+            // Set the slider value to the calculated position
+            ui->scale_factor_slider->setValue(sliderValue);
+
+            QString scaleFactorString = QString::number(scaleFactor*100, 'f', 0);
+            ui->scale_factor_label->setText(scaleFactorString);
+
+            if(cameraHandler.getArmedStatus(cameraName))
+            {
+                ui->camerastatusbutton->setText("Camera Status: Armed");
+                ui->camerastatusbutton->setStyleSheet("background-color: #00ff00");
+            }
+            else
+            {
+                ui->camerastatusbutton->setText("Camera Status: Disarmed");
+                ui->camerastatusbutton->setStyleSheet("background-color: #ff0000");
+            }
+
             connect(ui->closecamerabutton, &QPushButton::clicked, this, [this, cameraName]() {
                 removeCamera(cameraName);
+            });
+
+            connect(ui->camerastatusbutton, &QPushButton::clicked, this, [this, cameraName]() {
+                changeCamerastatus(cameraName);
+                if(cameraHandler.getArmedStatus(cameraName))
+                {
+                    ui->camerastatusbutton->setText("Camera Status: Armed");
+                    ui->camerastatusbutton->setStyleSheet("background-color: #00ff00");
+                }
+                else
+                {
+                    ui->camerastatusbutton->setText("Camera Status: Disarmed");
+                    ui->camerastatusbutton->setStyleSheet("background-color: #ff0000");
+                }
             });
 
             connect(ui->rewind_button, &QPushButton::clicked, this, [this, cameraName]() {
@@ -130,6 +178,10 @@ void CameraScreens::onImageClicked()
 
             });
 
+            // Connect slider value changed signal to update camera scale factor
+            connect(ui->scale_factor_slider, &QSlider::valueChanged, this, [this, cameraName](int value) {
+                on_scale_factor_slider_valueChanged(value, cameraName);
+            });
         }
     }
 }
@@ -160,16 +212,6 @@ void CameraScreens::onImageDoubleClicked()
             tabWidget->setCurrentIndex(newIndex);
         }
     }
-}
-
-void CameraScreens::onNextClicked()
-{
-    // Handle next button click
-}
-
-void CameraScreens::onPreviousClicked()
-{
-    // Handle previous button click
 }
 
 void CameraScreens::handleFrameUpdate(const QImage& frame, const QString& cameraName)
@@ -238,7 +280,7 @@ void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_s
 {
     ui->closecamerabutton->setEnabled(false);
     ui->rewind_button->setEnabled(false);
-    ui->addcamerabutton->setEnabled(false);
+    ui->camerastatusbutton->setEnabled(false);
 
 
     // Clear existing widgets in the layout
@@ -278,54 +320,40 @@ void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_s
         }
     }
 
-    ui->previous_button->setVisible(total_screens < numberOfConnectedCameras);
-    ui->next_button->setVisible(total_screens < numberOfConnectedCameras);
-
-    ui->addcamerabutton->setEnabled(true);
-
 }
 
 void CameraScreens::showLayoutButtons(int numberofConnectedCameras)
 {
-    if(numberofConnectedCameras > 4 || numberofConnectedCameras > 1)
-    {
-        if(numberofConnectedCameras <= 4 && numberofConnectedCameras > 1)
-        {
-            ui->one_camera->setEnabled(false);
-        }
-        else
-        {
-            ui->one_camera->setEnabled(false);
-            ui->four_camera->setEnabled(false);
-            ui->sixteen_camera->setEnabled(false);
-        }
-    }
-    else if(numberofConnectedCameras == 1 && !(ui->one_camera->isEnabled()))
-    {
-        ui->one_camera->setEnabled(true);
+    // if(numberofConnectedCameras > 4 || numberofConnectedCameras > 1)
+    // {
+    //     if(numberofConnectedCameras <= 4 && numberofConnectedCameras > 1)
+    //     {
+    //         ui->one_camera->setEnabled(false);
+    //     }
+    //     else
+    //     {
+    //         ui->one_camera->setEnabled(false);
+    //         ui->four_camera->setEnabled(false);
+    //         ui->sixteen_camera->setEnabled(false);
+    //     }
+    // }
+    // else if(numberofConnectedCameras == 1 && !(ui->one_camera->isEnabled()))
+    // {
+    //     ui->one_camera->setEnabled(true);
 
-        ui->sixteen_camera->setEnabled(true);
-    }
-    else if(numberofConnectedCameras < 4 && !(ui->four_camera->isEnabled()))
-    {
-        ui->one_camera->setEnabled(true);
+    //     ui->sixteen_camera->setEnabled(true);
+    // }
+    // else if(numberofConnectedCameras < 4 && !(ui->four_camera->isEnabled()))
+    // {
+    //     ui->one_camera->setEnabled(true);
 
-        ui->sixteen_camera->setEnabled(true);
-    }
+    //     ui->sixteen_camera->setEnabled(true);
+    // }
 }
 
 void CameraScreens::connectCameras()
 {
     qDebug() << "Connecting Cameras";
-
-    // // Array of camera details (URL and name)
-    // const vector<std::pair<QString, QString>> cameras = {
-    //                                                     // {"rtsp://192.168.1.9/live/ch00_0", "Garage"}
-    //                                                     {"3.mp4", "Camera 1"}
-    //                                                     /*{"rtsp://10.4.72.198:8080/h264.sdp", "Camera 2"}*/
-    //                                                     // {"rtsp://192.168.1.4:8080/h264.sdp", "Camera 2"}
-    //                                                     };
-
 
     connect(&cameraHandler, &CameraHandler::cameraOpened, this, &CameraScreens::handleCameraOpened);
     connect(&cameraHandler, &CameraHandler::cameraOpeningFailed, this, &CameraScreens::handleCameraOpeningFailed);
@@ -387,3 +415,16 @@ void CameraScreens::handleCameraOpeningFailed(const QString &cameraName)
     qDebug() << "Camera opening attempt failed for " << cameraName;
 }
 
+void CameraScreens::changeCamerastatus(const QString& cameraName)
+{
+    cameraHandler.changeCamerastatus(cameraName);
+}
+
+void CameraScreens::on_scale_factor_slider_valueChanged(int value, const QString &cameraName)
+{
+    double scaleFactor = static_cast<double>(value) / 100.0; // Convert the slider value to a double between 0.01 and 1
+    // Convert scaleFactor to QString
+    QString scaleFactorString = QString::number(value, 'f',0);
+    ui->scale_factor_label->setText(scaleFactorString);
+    cameraHandler.changeScalefactor(scaleFactor, cameraName);
+}

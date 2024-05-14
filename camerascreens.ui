@@ -6,12 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>779</width>
-    <height>590</height>
+    <width>1205</width>
+    <height>693</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
+  </property>
+  <property name="autoFillBackground">
+   <bool>true</bool>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout" stretch="2,0">
    <property name="sizeConstraint">
@@ -29,18 +32,31 @@
      <property name="title">
       <string/>
      </property>
-     <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0,0,0,0,0,0,0,0">
+     <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0,0,0,0,0">
       <item>
-       <widget class="QPushButton" name="previous_button">
+       <widget class="QLabel" name="label">
         <property name="text">
-         <string>&lt;</string>
+         <string>Scale Factor: </string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="next_button">
+       <widget class="QSlider" name="scale_factor_slider">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="scale_factor_label">
         <property name="text">
-         <string>&gt;</string>
+         <string>Scale%</string>
         </property>
        </widget>
       </item>
@@ -58,9 +74,15 @@
        </spacer>
       </item>
       <item>
-       <widget class="QPushButton" name="addcamerabutton">
+       <widget class="QPushButton" name="camerastatusbutton">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="text">
-         <string>Add Camera</string>
+         <string>Camera Status:                      </string>
         </property>
        </widget>
       </item>
@@ -75,40 +97,6 @@
        <widget class="QPushButton" name="closecamerabutton">
         <property name="text">
          <string>Close Camera</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="horizontalSpacer_2">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item>
-       <widget class="QPushButton" name="one_camera">
-        <property name="text">
-         <string>1</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="four_camera">
-        <property name="text">
-         <string>4</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="sixteen_camera">
-        <property name="text">
-         <string>16</string>
         </property>
        </widget>
       </item>

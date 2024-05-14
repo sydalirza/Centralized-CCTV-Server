@@ -30,22 +30,15 @@ public:
 public slots:
     void addCamera(const QString& cameraUrl, const QString& cameraName);
     void removeCamera(const QString& cameraName);
+    void on_one_camera_clicked();
+    void on_four_camera_clicked();
+    void on_sixteen_camera_clicked();
 
 private slots:
-
-    void on_one_camera_clicked();
-
-    void on_four_camera_clicked();
-
-    void on_sixteen_camera_clicked();
 
     void onImageClicked();
 
     void onImageDoubleClicked();
-
-    void onNextClicked();
-
-    void onPreviousClicked();
 
     void handleFrameUpdate(const QImage &frame, const QString &cameraname);
 
@@ -57,6 +50,9 @@ private slots:
 
     void handleCameraOpeningFailed(const QString &cameraName);
 
+    void changeCamerastatus(const QString &cameraName);
+
+    void on_scale_factor_slider_valueChanged(int value, const QString &cameraName);
 
 private:
     Ui::CameraScreens *ui;

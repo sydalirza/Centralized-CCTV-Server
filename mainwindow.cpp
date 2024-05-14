@@ -32,6 +32,14 @@ MainWindow::MainWindow(QWidget *parent) :
     setFixedSize(QGuiApplication::primaryScreen()->availableSize());
     cameraScreens = qobject_cast<CameraScreens*>(ui->tabWidget->currentWidget());
 
+    QSize iconSize(ui->one_layout->width(), ui->one_layout->height());
+    ui->one_layout->setIcon(QIcon("Icons/one.png"));
+    ui->one_layout->setIconSize(iconSize);
+    ui->four_layout->setIcon(QIcon("Icons/four.png"));
+    ui->four_layout->setIconSize(iconSize);
+    ui->sixteen_layout->setIcon(QIcon("Icons/sixteen.png"));
+    ui->sixteen_layout->setIconSize(iconSize);
+    ui->close_button->setIcon(QIcon("Icons/close.png"));
 
     cameraSettingsInstance = new CameraSettings(); // Create an instance of CameraSettings
     connect(cameraSettingsInstance, &CameraSettings::add_camera, this, &MainWindow::update_camera_buttons);
@@ -211,6 +219,7 @@ void MainWindow::update_camera_buttons(const std::pair<QString, QString> camera)
             QPushButton *cameraButton = new QPushButton(camera.second);
             // Store the URL as a tooltip for the button
             cameraButton->setToolTip(camera.first);
+            cameraButton->setIcon(QIcon("Icons/cctv.png"));
             cameraLayout->addWidget(cameraButton);
 
             // Connect the button's clicked signal to open the corresponding camera tab
@@ -283,3 +292,19 @@ void MainWindow::remove_camera_button(const QString &cameraName)
         qDebug() << "Error: cameranames layout is not a QVBoxLayout";
     }
 }
+
+void MainWindow::on_one_layout_clicked()
+{
+    cameraScreens->on_one_camera_clicked();
+}
+
+void MainWindow::on_four_layout_clicked()
+{
+    cameraScreens->on_four_camera_clicked();
+}
+
+void MainWindow::on_sixteen_layout_clicked()
+{
+    cameraScreens->on_sixteen_camera_clicked();
+}
+

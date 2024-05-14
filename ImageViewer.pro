@@ -17,6 +17,7 @@ SOURCES += \
         customlabel.cpp \
         facerecognition.cpp \
         focusview.cpp \
+        loginform.cpp \
         main.cpp \
         mainwindow.cpp \
         recordingworker.cpp \
@@ -37,6 +38,7 @@ FORMS += \
     camerascreens.ui \
     camerasettings.ui \
     focusview.ui \
+    loginform.ui \
     mainwindow.ui \
     rewindui.ui \
     singleviewwidget.ui
@@ -48,6 +50,7 @@ HEADERS += \
     customlabel.h \
     facerecognition.h \
     focusview.h \
+    loginform.h \
     mainwindow.h \
     recordingworker.h \
     rewindui.h \

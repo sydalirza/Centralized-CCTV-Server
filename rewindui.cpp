@@ -12,6 +12,12 @@ RewindUi::RewindUi(const QString& cameraName, const QVector<QPair<QDate, QPair<M
     connect(ui->pause_button, &QPushButton::clicked, this, &RewindUi::onPauseButtonClicked);
     connect(ui->horizontalSlider, &QSlider::valueChanged, this, &RewindUi::onSliderValueChanged);
 
+    ui->play_button->setIcon(QIcon("Icons/play.png"));
+    ui->pause_button->setIcon(QIcon("Icons/pause.png"));
+    ui->goto_end->setIcon(QIcon("Icons/next.png"));
+    ui->goto_start->setIcon(QIcon("Icons/prev.png"));
+
+
     // Disable UI elements initially
     ui->play_button->setEnabled(false);
     ui->pause_button->setEnabled(false);
