@@ -1,41 +1,34 @@
-#include <QCoreApplication>
-#include <QHBoxLayout>
-#include <QLabel>
-#include <QImage>
-#include <QTimer>
-#include <QPixmap>
-#include <QWidget>
-#include <QCoreApplication>
-#include "opencv2/core.hpp"
-#include "opencv2/highgui.hpp"
-#include "opencv2/imgproc.hpp"
-#include "opencv2/videoio.hpp"
-#include "opencv2/objdetect.hpp"
-#include <QThread>
+#ifndef FOCUSVIEW_H
+#define FOCUSVIEW_H
 
-using namespace std;
-using namespace cv;
+#include <QWidget>
+#include <QLabel>
+#include <QHBoxLayout>
+#include <QThread>
+#include "cameraworker.h"
 
 class FocusView : public QWidget {
     Q_OBJECT
 
 public:
-    FocusView(QWidget *parent = nullptr, const QString& cameraName = "", const std::string& cameraUrl = "");
+    FocusView(QWidget *parent, const QString& cameraName, const std::string& cameraUrl, double scaleFactor);
     ~FocusView();
 
+public slots:
+    void stopWorker();
+    void onDestroyed();
+
+signals:
+    void stopWorkerSignal();
+
 private slots:
-    void updateFrame();
-    void stopTimer();
+    void onFrameReady(const QImage& frame);
+
 
 private:
-    CascadeClassifier face_cascade;
-    VideoCapture capture;
     QLabel *label;
-    QTimer *timer;
-    QString displayedCamera;
-    bool persondetected = false;
-    VideoWriter videoWriter;
-    bool detectfaces = true;
-    QString cameraUrl;
     QThread workerThread;
+    CameraWorker *cameraWorker;
 };
+
+#endif // FOCUSVIEW_H

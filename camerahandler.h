@@ -49,6 +49,7 @@ public:
     double getScalefactor(const QString &cameraName);
     void changeScalefactor(double value, const QString &cameraName);
 
+
 signals:
     void frameUpdated(const QImage& frame, const QString& cameraname);
     void cameraOpeningFailed(const QString& cameraname);
@@ -57,6 +58,8 @@ signals:
 
 private slots:
     void updateFrames();
+    void cleanupOldFrames();
+
 
 private:
 
@@ -89,6 +92,7 @@ private:
 
     QTimer openTimer; //Camera Connection Timer
     QTimer *timer; //FPS Timer
+    QTimer cleanupTimer;
     QVector<CameraInfo> cameras;
     QThreadPool threadPool;
     bool attemptReconnect(CameraInfo &camera);

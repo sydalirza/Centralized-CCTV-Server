@@ -52,6 +52,8 @@ private slots:
 
     void on_sixteen_layout_clicked();
 
+    void updateDateTime();
+
 private:
     Ui::MainWindow *ui;
 

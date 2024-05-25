@@ -41,13 +41,10 @@ RewindUi::RewindUi(const QString& cameraName, const QVector<QPair<QDate, QPair<M
     for (const auto& date : uniqueDates) {
         ui->date->addItem(date.toString(Qt::ISODate), QVariant(date));
     }
-
-    // Connect signals and slots for thread management
-    connect(&workerThread, &QThread::finished, this, &RewindUi::deleteLater);
-    connect(&workerThread, &QThread::finished, &workerThread, &QThread::deleteLater);
 }
 
 RewindUi::~RewindUi() {
+    qDebug() << "Rewind UI deleted";
     delete ui;
 }
 

@@ -22,6 +22,10 @@ CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTim
     connect(timer, &QTimer::timeout, this, &CameraHandler::updateFrames);
     timer->start(1); //FPS
 
+    // Connect cleanup timer to cleanupOldFrames method
+    connect(&cleanupTimer, &QTimer::timeout, this, &CameraHandler::cleanupOldFrames);
+    cleanupTimer.start(24 * 60 * 60 * 1000); // Run once every day
+
     string faceClassifier = "haarcascade_frontalface_alt2.xml";
 
     if (!faceCascade.load(faceClassifier)) {
@@ -55,6 +59,7 @@ CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTim
 }
 
 CameraHandler:: ~CameraHandler(){
+    qDebug() << "Closing Camera Handler";
     closeAllCameras();
 }
 
@@ -69,25 +74,17 @@ void CameraHandler::closeAllCameras()
     cameras.clear();
 }
 
-// void CameraHandler::initializeVideoWriter(const QString &cameraname)
-// {
-//     // Set up the directory path for the camera
-//     QString cameraDirPath = videoFolder + "/" + cameraname;
-
-//     // Check if the directory already exists
-//     QDir cameraDir(cameraDirPath);
-//     if (cameraDir.exists()) {
-//         qDebug() << "Directory already exists: " << cameraDirPath;
-//         return; // Directory already exists, no need to create it again
-//     }
-
-//     // Create the directory for the camera
-//     if (cameraDir.mkpath(cameraDirPath)) {
-//         qDebug() << "Directory created successfully: " << cameraDirPath;
-//     } else {
-//         qDebug() << "Error: Failed to create directory: " << cameraDirPath;
-//     }
-// }
+void CameraHandler::cleanupOldFrames()
+{
+    QDate currentDate = QDate::currentDate();
+    for (auto &camera : cameras) {
+        camera.CameraRecording.erase(std::remove_if(camera.CameraRecording.begin(), camera.CameraRecording.end(),
+                                                    [currentDate](const QPair<QDate, QPair<Mat, QTime>> &record) {
+                                                        return record.first < currentDate.addDays(-7);
+                                                    }),
+                                     camera.CameraRecording.end());
+    }
+}
 
 void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameraname)
 {
@@ -360,19 +357,20 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
 
     // Detect faces in the resized grayscale frame
     vector<Rect> faces;
-    double scaleFactor = 1.9; // Experiment with different values (e.g., 1.1, 1.2, etc.)
+    double scaleFactor = 1.3; // Experiment with different values (e.g., 1.1, 1.2, etc.)
     int minNeighbors = 1; // Experiment with different values (e.g., 3, 5, 7, etc.)
     int flags = 0;
     faceCascade.detectMultiScale(frame_gray, faces, scaleFactor, minNeighbors, flags);
 
+    static int unrecognizedCount = 0;
     // Check the number of detected faces
     if (faces.empty())
     {
-        if (camera.isRecording && camera.persondetected && camera.frameBuffer.length() >= camera.startFrameIndex + 100)
+        if (camera.isRecording && camera.persondetected && camera.CameraRecording.length() >= camera.startFrameIndex + 100)
         {
             qDebug() << "Person has left the frame";
-            camera.endFrameIndex = camera.frameBuffer.length()-10;
-            qDebug() << "Start = " << camera.startFrameIndex << " End = " << camera.endFrameIndex << "Current = " << camera.frameBuffer.length();
+            camera.endFrameIndex = camera.CameraRecording.length()-10;
+            qDebug() << "Start = " << camera.startFrameIndex << " End = " << camera.endFrameIndex << "Current = " << camera.CameraRecording.length();
 
             RecordingWorker* worker = new RecordingWorker;
 
@@ -420,13 +418,19 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
             else {
                 // Draw red rectangle for unknown face or low-confidence prediction
                 rectangle(resizedFrame, face, Scalar(0, 0, 255), 1);
+                // // Save the detected face
+                // QString filename = QString("unrecognized_face_%1.jpg").arg(unrecognizedCount);
+                // QString filepath = QString("faces/") + filename; // Fix filepath construction
+                // qDebug() << filename;
+                // imwrite(filepath.toStdString(), faceROI);
+                // unrecognizedCount++;
             }
         }
 
         // Print a detection message based on the number of detected faces
         if (faces.size() >= 1 && !camera.persondetected && !camera.isRecording)
         {
-            if (camera.frameBuffer.length() - camera.cooldowntime <= 200 && camera.cooldowntime != 0)
+            if (camera.CameraRecording.length() - camera.cooldowntime <= 200 && camera.cooldowntime != 0)
             {
 
             }
@@ -436,12 +440,12 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
                 QString formattedDateTime = currentDateTime.toString("yyyy-MM-dd hh:mm:ss.zzz");
                 qDebug() << "Person detected in the " << camera.cameraname << " camera at " << formattedDateTime;
                 camera.persondetected = true;
-                if (camera.frameBuffer.length() >= 100 && !camera.isRecording)
+                if (camera.CameraRecording.length() >= 100 && !camera.isRecording)
                 {
-                    camera.startFrameIndex = camera.frameBuffer.length() - 100;
+                    camera.startFrameIndex = camera.CameraRecording.length() - 100;
                     camera.isRecording = true;
                 }
-                else if (camera.frameBuffer.length() < 100 && !camera.isRecording)
+                else if (camera.CameraRecording.length() < 100 && !camera.isRecording)
                 {
                     camera.startFrameIndex = 0;
                     camera.isRecording = true;
@@ -467,7 +471,6 @@ void CameraHandler::processFrame(CameraInfo& camera)
         camera.isError = true;
 
         Mat blackFrame(1, 1, CV_8UC3, cv::Scalar(0, 0, 0));
-        camera.frameBuffer.append(qMakePair(blackFrame, currentDateTime.time()));
 
         // Append the frame buffer to CameraRecording with the current date
         camera.CameraRecording.append(qMakePair(currentDateTime.date(), qMakePair(blackFrame, currentDateTime.time())));
@@ -476,8 +479,6 @@ void CameraHandler::processFrame(CameraInfo& camera)
         newframe = facedetection(frame, camera);
 
         camera.latestFrame = matToImage(newframe);
-
-        camera.frameBuffer.append(qMakePair(newframe, currentDateTime.time()));
 
         // Append the frame buffer to CameraRecording with the current date
         camera.CameraRecording.append(qMakePair(currentDateTime.date(), qMakePair(newframe, currentDateTime.time())));
@@ -669,6 +670,7 @@ void serializeMat(QDataStream &stream, const Mat &mat)
     stream << matData;
 }
 
+
 void deserializeMat(QDataStream &stream, Mat &mat)
 {
     // Deserialize the Mat object from the QByteArray
@@ -686,12 +688,12 @@ void deserializeMat(QDataStream &stream, Mat &mat)
 
 void CameraHandler::serialize(const CameraInfo &camera)
 {
-    QFile file(camera.cameraname);
+    QFile file(camera.cameraname + ".dat");
     if (file.open(QIODevice::WriteOnly)) {
         QDataStream out(&file);
 
         // Serialize the number of frames in the frame buffer
-        out << camera.frameBuffer.size();
+        out << camera.CameraRecording.size();
 
         // Serialize each frame (Mat object) and its corresponding QTime
         for (const auto& framePair : camera.CameraRecording) {
@@ -714,8 +716,7 @@ void CameraHandler::serialize(const CameraInfo &camera)
 
 void CameraHandler::deserialize(CameraInfo &camera)
 {
-    qDebug() << camera.cameraname;
-    QFile file(camera.cameraname);
+    QFile file(camera.cameraname + ".dat");
     if (file.open(QIODevice::ReadOnly)) {
         QDataStream in(&file);
         // Get the size of the file for progress calculation
@@ -724,9 +725,10 @@ void CameraHandler::deserialize(CameraInfo &camera)
         // Initialize progress indicator
         QProgressDialog progressDialog("Deserializing...", "Cancel", 0, 100);
         progressDialog.setWindowModality(Qt::WindowModal);
+        progressDialog.setMinimumDuration(0); // Show progress dialog immediately
 
         // Clear existing data in the CameraRecording buffer
-        // camera.CameraRecording.clear();
+        camera.CameraRecording.clear();
 
         // Deserialize the number of frames in the frame buffer
         int numFrames;
@@ -739,7 +741,6 @@ void CameraHandler::deserialize(CameraInfo &camera)
             if (progressDialog.wasCanceled())
                 break;
 
-            qDebug() << "lol1";
             QDate date;
             in >> date;
             bytesRead += sizeof(date);
@@ -751,6 +752,7 @@ void CameraHandler::deserialize(CameraInfo &camera)
             Mat frame;
             deserializeMat(in, frame);
             bytesRead += frame.total() * frame.elemSize();
+            qDebug() << bytesRead;
 
             // Append the frame and its corresponding date to the CameraRecording buffer
             camera.CameraRecording.append(qMakePair(date, qMakePair(frame, time)));
@@ -761,7 +763,6 @@ void CameraHandler::deserialize(CameraInfo &camera)
         }
 
         file.close();
-
         progressDialog.setValue(100); // Ensure progress reaches 100% at the end
     }
     else {

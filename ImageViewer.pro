@@ -14,6 +14,7 @@ SOURCES += \
         camerahandler.cpp \
         camerascreens.cpp \
         camerasettings.cpp \
+        cameraworker.cpp \
         customlabel.cpp \
         facerecognition.cpp \
         focusview.cpp \
@@ -47,6 +48,7 @@ HEADERS += \
     camerahandler.h \
     camerascreens.h \
     camerasettings.h \
+    cameraworker.h \
     customlabel.h \
     facerecognition.h \
     focusview.h \

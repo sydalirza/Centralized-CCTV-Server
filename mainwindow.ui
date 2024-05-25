@@ -63,6 +63,13 @@
           </spacer>
          </item>
          <item>
+          <widget class="QLabel" name="date_time">
+           <property name="text">
+            <string>DateTime</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QPushButton" name="close_button">
            <property name="text">
             <string>Close</string>

@@ -3,12 +3,14 @@
 
 #include <QWidget>
 #include <QMessageBox>
+#include <QTabWidget>
 #include "customlabel.h"
 #include "singleviewwidget.h"
 #include "focusview.h"
 #include "camerahandler.h"
 #include "camerasettings.h"
 #include "rewindui.h"
+#include "focusview.h"
 
 namespace Ui {
 class CameraScreens;
@@ -54,9 +56,12 @@ private slots:
 
     void on_scale_factor_slider_valueChanged(int value, const QString &cameraName);
 
+    void handleTabCloseRequested(int index);
+
 private:
     Ui::CameraScreens *ui;
     QTimer *timer;
+    QTabWidget* tabWidget;
 
     // Function to dynamically update the camera layout based on the number of connected cameras
     void updateCameraLayout(int numberOfConnectedCameras, int total_screens);
@@ -68,8 +73,8 @@ private:
     CustomLabel *selectedLabel;
 
     SingleViewWidget *singleViewWidget = nullptr;
-    FocusView *focusView = nullptr;
-    RewindUi *RewindUI = nullptr;
+    // FocusView *focusView = nullptr;
+    // RewindUi *RewindUI = nullptr;
 
     QWidget* parentWidget;
 
@@ -85,7 +90,6 @@ private:
     QMap<QString, SingleViewWidget*> cameraSingleViewWidgets;
 
     void addCameraLabel(const QString &cameraname, int total_screens, int i);
-    void showLayoutButtons(int numberOfConnectedCameras);
 };
 
 #endif // CAMERASCREENS_H

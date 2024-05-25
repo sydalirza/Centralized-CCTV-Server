@@ -45,11 +45,23 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(cameraSettingsInstance, &CameraSettings::add_camera, this, &MainWindow::update_camera_buttons);
     connect(cameraSettingsInstance, &CameraSettings::delete_camera, this, &MainWindow::remove_camera_button);
 
+    // Setup the timer to update date and time
+    QTimer *timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, &MainWindow::updateDateTime);
+    timer->start(1000); // Update every second
 }
 
 MainWindow::~MainWindow()
 {
+    delete cameraScreens;
     delete ui;
+}
+
+void MainWindow::updateDateTime()
+{
+    // Get the current date and time and format it
+    QString currentDateTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
+    ui->date_time->setText(currentDateTime); // Assuming date_time is the name of the QLabel
 }
 
 void MainWindow::setMaxSizeBasedOnScreen()
@@ -194,6 +206,8 @@ void MainWindow::openDefaultTab()
             closeButton->setVisible(false);
         }
     }
+    qDebug() << "Number of Tabs: " << ui->tabWidget->count();
+    qDebug() << "Current Index: " << ui->tabWidget->currentIndex();
 }
 
 void MainWindow::update_camera_buttons(const std::pair<QString, QString> camera)
@@ -232,7 +246,9 @@ void MainWindow::update_camera_buttons(const std::pair<QString, QString> camera)
                         }
                     });
         }
-    } else {
+    }
+    else
+    {
         qDebug() << "Error: cameranames layout is not a QVBoxLayout";
     }
 }

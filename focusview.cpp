@@ -1,75 +1,49 @@
 #include "focusview.h"
-#include <QDateTime>
+#include <QDebug>
 
-FocusView::FocusView(QWidget *parent, const QString& cameraName, const std::string& cameraUrl) : QWidget(nullptr), cameraUrl(QString::fromStdString(cameraUrl)) {
-    this->moveToThread(&workerThread);
-
-    workerThread.start();
+FocusView::FocusView(QWidget *parent, const QString& cameraName, const std::string& cameraUrl, double scaleFactor)
+    : QWidget(parent), cameraWorker(new CameraWorker(cameraUrl, scaleFactor)) {
 
     QHBoxLayout *layout = new QHBoxLayout(this);
     label = new QLabel(this);
     label->setScaledContents(true);
     layout->addWidget(label);
 
-    capture.open(cameraUrl);
-    displayedCamera = cameraName;
+    // Move the worker to a separate thread
+    cameraWorker->moveToThread(&workerThread);
 
-    if (!capture.isOpened()) {
-        qDebug() << "Could not open Video Capture";
-        QCoreApplication::exit(-1);
-    }
+    // Connect signals and slots
+    connect(&workerThread, &QThread::finished, cameraWorker, &QObject::deleteLater);
+    connect(cameraWorker, &CameraWorker::frameReady, this, &FocusView::onFrameReady);
+    connect(this, &FocusView::stopWorkerSignal, cameraWorker, &CameraWorker::stop);
 
-    timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, &FocusView::updateFrame);
-    connect(this, &QObject::destroyed, this, &FocusView::stopTimer);
-    timer->start(30); // Update every 30 milliseconds
-
-    if (parent)
-        setParent(parent);
+    // Start the worker thread and processing
+    workerThread.start();
+    QMetaObject::invokeMethod(cameraWorker, "start", Qt::QueuedConnection);
 }
 
 FocusView::~FocusView() {
-    if (capture.isOpened()) {
-        capture.release();
-    }
-
-    stopTimer();
-    workerThread.quit();
-    workerThread.wait();
-
-    delete this;
+    // Ensure the worker is stopped and thread is terminated
+    onDestroyed();
     qDebug() << "Focus View deleted";
 }
 
-void FocusView::stopTimer() {
-    if (timer->isActive()) {
-        timer->stop();
+void FocusView::stopWorker() {
+    if (cameraWorker) {
+        emit stopWorkerSignal();
     }
 }
 
-void FocusView::updateFrame() {
-    if (!capture.isOpened()) {
-        qDebug() << "Video capture is not open, attempting to reopen...";
-        capture.open(cameraUrl.toStdString());
-        if (!capture.isOpened()) {
-            qDebug() << "Failed to reopen video capture";
-            return;
-        }
+void FocusView::onDestroyed() {
+    stopWorker();
+    if (cameraWorker) {
+        disconnect(cameraWorker, &CameraWorker::frameReady, this, &FocusView::onFrameReady);
     }
-
-    Mat frame;
-    capture >> frame;
-    if (frame.empty()) {
-        qDebug() << "No frame captured from camera";
-        QImage placeholderImage("error.png");
-        label->setPixmap(QPixmap::fromImage(placeholderImage).scaled(label->size(), Qt::KeepAspectRatio));
-        return;
-    }
-
-    // Convert OpenCV Mat to QImage
-    QImage qImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_BGR888);
-
-    // Scale the image to fit the label
-    label->setPixmap(QPixmap::fromImage(qImage).scaled(label->size(), Qt::KeepAspectRatio));
+    workerThread.quit();
+    workerThread.wait();
+    qDebug() << "Focus View is being destroyed, signals disconnected and worker stopped";
 }
 
+void FocusView::onFrameReady(const QImage& frame) {
+    label->setPixmap(QPixmap::fromImage(frame).scaled(label->size()));
+}

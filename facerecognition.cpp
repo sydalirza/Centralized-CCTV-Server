@@ -1,7 +1,6 @@
 #include "facerecognition.h"
 #include <opencv2/face.hpp>
 
-
 using namespace cv;
 using namespace cv::face;
 using namespace std;
