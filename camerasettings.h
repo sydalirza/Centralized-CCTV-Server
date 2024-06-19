@@ -3,7 +3,6 @@
 
 #include <QWidget>
 #include <QtSql/QSqlTableModel>
-using namespace std;
 
 namespace Ui {
 class CameraSettings;

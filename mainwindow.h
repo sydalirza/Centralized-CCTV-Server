@@ -43,7 +43,7 @@ private slots:
 
     void remove_camera_button(const QString &cameraName);
 
-    vector<std::pair<QString, QString>> getAllCameras();
+    std::vector<std::pair<QString, QString>> getAllCameras();
 
 
     void on_one_layout_clicked();
@@ -59,7 +59,7 @@ private:
 
     CameraSettings *cameraSettingsInstance = nullptr;
     CameraScreens *cameraScreens = nullptr;
-    vector<std::pair<QString, QString>> cameras;
+    std::vector<std::pair<QString, QString>> cameras;
 
 };
 

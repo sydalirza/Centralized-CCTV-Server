@@ -83,7 +83,7 @@ void MainWindow::on_tab_button_1_clicked()
     ui -> tabWidget -> addTab(new CameraScreens(), "New Tab");
 }
 
-vector<std::pair<QString, QString>> MainWindow::getAllCameras()
+std::vector<std::pair<QString, QString>> MainWindow::getAllCameras()
 {
     // Check if the database file exists
     QString databaseName = "cameras.db";

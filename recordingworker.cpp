@@ -4,6 +4,8 @@
 #include <QSqlError>
 #include <QDir>
 
+using namespace cv;
+
 RecordingWorker::RecordingWorker() {
 
 }
@@ -29,13 +31,13 @@ void RecordingWorker::recordvideo(int startFrameindex, int endFrameindex, const 
     // Create VideoWriter object
     QString fileName = QString("%1_%2_%3_%4.mp4")
                            .arg(cameraname)
-                           .arg(frameBuffer[startFrameindex].first.toString())
+                           .arg(frameBuffer[startFrameindex].first.toString().replace(" ", "_"))
                            .arg(frameBuffer[startFrameindex].second.second.toString("hhmmss"))
                            .arg(frameBuffer[endFrameindex].second.second.toString("hhmmss"));
 
     QString filePath = cameraDirPath + "/" + fileName;
 
-    VideoWriter videoWriter(filePath.toStdString(), VideoWriter::fourcc('M', 'P', '4', 'V'), 30, frameBuffer[startFrameindex].second.first.size());
+    VideoWriter videoWriter(filePath.toStdString(), VideoWriter::fourcc('m', 'p', '4', 'v'), 30, frameBuffer[startFrameindex].second.first.size());
 
     // Check if VideoWriter is opened successfully
     if (!videoWriter.isOpened()) {
@@ -74,13 +76,13 @@ void RecordingWorker::recordvideo(int startFrameindex, int endFrameindex, const 
     }
 
     // Create VideoWriter object
-    QString fileName = QString("%1_%2_%3_%4.avi")
+    QString fileName = QString("%1_%2_%3_%4.mp4")
                            .arg(cameraname)
                            .arg(frameBuffer[startFrameindex].first.toString())
                            .arg(frameBuffer[startFrameindex].second.second.toString("hhmmss"))
                            .arg(frameBuffer[endFrameindex].second.second.toString("hhmmss"));
 
-    VideoWriter videoWriter(fileName.toStdString(), VideoWriter::fourcc('M', 'J', 'P', 'G'), 30, frameBuffer[startFrameindex].second.first.size());
+    VideoWriter videoWriter(fileName.toStdString(), VideoWriter::fourcc('m', 'p', '4', 'v'), 30, frameBuffer[startFrameindex].second.first.size());
 
     // Check if VideoWriter is opened successfully
     if (!videoWriter.isOpened()) {

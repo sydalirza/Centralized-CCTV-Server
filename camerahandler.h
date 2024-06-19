@@ -3,7 +3,6 @@
 
 
 #include <opencv2/opencv.hpp>
-#include "facerecognition.h"
 #include <QObject>
 #include <QImage>
 #include <QTimer>
@@ -19,9 +18,8 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/face.hpp>
 
-using namespace cv::face;
-using namespace std;
-using namespace cv;
+// using namespace cv::face;
+// using namespace cv;
 
 class CameraHandler: public QObject
 {
@@ -31,8 +29,8 @@ public:
     explicit CameraHandler(QObject* parent = nullptr);
     ~CameraHandler();
 
-    void OpenCamera(const string &cameraUrl, const QString &cameraname);
-    void OpenCamera_single(const string &cameraUrl, const QString &cameraname);
+    void OpenCamera(const std::string &cameraUrl, const QString &cameraname);
+    void OpenCamera_single(const std::string &cameraUrl, const QString &cameraname);
     void CloseCamera(const QString &cameraname);
     void closeAllCameras();
     void clearFrameBuffer(const QString &cameraname);
@@ -41,9 +39,9 @@ public:
     const QImage& getLatestFrame(const QString &cameraname) const;
     int getNumberOfConnectedCameras() const;
     QString getCameraName(int index) const;
-    string getCameraUrl(const QString& cameraname) const;
+    std::string getCameraUrl(const QString& cameraname) const;
     bool getCameraError(const QString& cameraname) const;
-    QVector<QPair<QDate, QPair<Mat, QTime>>> getFrameBuffer(const QString& cameraname) const;
+    QVector<QPair<QDate, QPair<cv::Mat, QTime>>> getFrameBuffer(const QString& cameraname) const;
     void changeCamerastatus(const QString &cameraName);
     bool getArmedStatus(const QString &cameraName) const;
     double getScalefactor(const QString &cameraName);
@@ -71,15 +69,15 @@ private:
     };
 
     struct CameraInfo{
-        VideoCapture videoCapture;
+        cv::VideoCapture videoCapture;
         QString cameraname;
         QImage latestFrame;
-        string cameraUrl;
+        std::string cameraUrl;
         bool isError = false;
         bool isReconnecting = false;
-        VideoWriter videoWriter;
-        QVector<QPair<QDate, QPair<Mat, QTime>>> CameraRecording;
-        QVector<QPair<Mat, QTime>> frameBuffer;
+        cv::VideoWriter videoWriter;
+        QVector<QPair<QDate, QPair<cv::Mat, QTime>>> CameraRecording;
+        QVector<QPair<cv::Mat, QTime>> frameBuffer;
         int currentBufferIndex;
         bool isRecording = false;
         int startFrameIndex;
@@ -96,7 +94,7 @@ private:
     QVector<CameraInfo> cameras;
     QThreadPool threadPool;
     bool attemptReconnect(CameraInfo &camera);
-    QImage matToImage(const Mat &mat) const;
+    QImage matToImage(const cv::Mat &mat) const;
     void reconnectCamera(CameraInfo& camera);
     void processFrame(CameraInfo& camera);
 
@@ -105,17 +103,17 @@ private:
     void deserialize(CameraInfo& camera);
 
 
-    Mat facedetection(Mat frame, CameraInfo &camera);
+    cv::Mat facedetection(cv::Mat frame, CameraInfo &camera);
 
     const QString videoFolder = "Recordings1";  // Added for video recording
     void initializeVideoWriter(const QString &cameraname);
     void closeVideoWriter(const QString &cameraname);
 
 
-    Mat detectFaces(const cv::Mat &frame);
+    cv::Mat detectFaces(const cv::Mat &frame);
     cv::CascadeClassifier faceCascade; // Declare a CascadeClassifier member
     // Load pre-trained face recognition model
-    Ptr<LBPHFaceRecognizer> recognizer = LBPHFaceRecognizer::create();
+    cv::Ptr<cv::face::LBPHFaceRecognizer> recognizer = cv::face::LBPHFaceRecognizer::create();
 
     QSqlDatabase db;
 

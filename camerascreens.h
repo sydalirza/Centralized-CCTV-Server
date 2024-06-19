@@ -5,12 +5,8 @@
 #include <QMessageBox>
 #include <QTabWidget>
 #include "customlabel.h"
-#include "singleviewwidget.h"
-#include "focusview.h"
 #include "camerahandler.h"
 #include "camerasettings.h"
-#include "rewindui.h"
-#include "focusview.h"
 
 namespace Ui {
 class CameraScreens;
@@ -24,7 +20,7 @@ class CameraScreens : public QWidget
 
 
 public:
-    explicit CameraScreens(QWidget *parent = nullptr, QWidget *parentWidget = nullptr, const vector<std::pair<QString, QString>> &cameras = {});
+    explicit CameraScreens(QWidget *parent = nullptr, QWidget *parentWidget = nullptr, const std::vector<std::pair<QString, QString>> &cameras = {});
 
     void connectCameras();
     ~CameraScreens();
@@ -72,23 +68,17 @@ private:
     CustomLabel* lastClickedLabel = nullptr;
     CustomLabel *selectedLabel;
 
-    SingleViewWidget *singleViewWidget = nullptr;
-    // FocusView *focusView = nullptr;
-    // RewindUi *RewindUI = nullptr;
-
     QWidget* parentWidget;
 
     int totalWalls = 1; // Set an initial value, adjust as needed
     int currentWall = 16; // Set an initial value, adjust as needed
     int camerasPerWall = 16; // Set an initial value, adjust as needed
 
-    const vector<std::pair<QString, QString>> cameras;
+    const std::vector<std::pair<QString, QString>> cameras;
     QVector<QLabel*> cameraLabels;  // Keep track of the QLabel widgets
     CameraHandler cameraHandler;    // Instance of CameraHandler
     CameraSettings cameraSettings;
     QMap<QString, CustomLabel*> cameraLabelMap;
-    QMap<QString, SingleViewWidget*> cameraSingleViewWidgets;
-
     void addCameraLabel(const QString &cameraname, int total_screens, int i);
 };
 

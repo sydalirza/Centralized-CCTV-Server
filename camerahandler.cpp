@@ -13,9 +13,15 @@
 #include <QSqlQuery>
 #include <QSqlError>
 
-using namespace cv;
-using namespace cv::face;
-
+#include <dlib/opencv.h>
+#include <dlib/image_processing.h>
+#include <dlib/image_processing/frontal_face_detector.h>
+#include <dlib/image_processing/render_face_detections.h>
+#include <dlib/image_processing.h>
+#include <dlib/image_io.h>
+#include <dlib/clustering.h>
+#include <dlib/string.h>
+#include <dlib/dnn.h>
 
 CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this))
 {
@@ -26,7 +32,7 @@ CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTim
     connect(&cleanupTimer, &QTimer::timeout, this, &CameraHandler::cleanupOldFrames);
     cleanupTimer.start(24 * 60 * 60 * 1000); // Run once every day
 
-    string faceClassifier = "haarcascade_frontalface_alt2.xml";
+    std::string faceClassifier = "haarcascade_frontalface_alt2.xml";
 
     if (!faceCascade.load(faceClassifier)) {
         qDebug() << "Could not load the classifier";
@@ -79,14 +85,14 @@ void CameraHandler::cleanupOldFrames()
     QDate currentDate = QDate::currentDate();
     for (auto &camera : cameras) {
         camera.CameraRecording.erase(std::remove_if(camera.CameraRecording.begin(), camera.CameraRecording.end(),
-                                                    [currentDate](const QPair<QDate, QPair<Mat, QTime>> &record) {
+                                                    [currentDate](const QPair<QDate, QPair<cv::Mat, QTime>> &record) {
                                                         return record.first < currentDate.addDays(-7);
                                                     }),
                                      camera.CameraRecording.end());
     }
 }
 
-void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameraname)
+void CameraHandler::OpenCamera(const std::string &cameraUrl, const QString &cameraname)
 {
 
     for (const auto& camera : cameras)
@@ -115,7 +121,7 @@ void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameranam
             newcamera.cameraname = cameraname;
             newcamera.cameraUrl = cameraUrl;
 
-            QString filePath = cameraname;
+            QString filePath = cameraname + ".dat";
             if (QFile::exists(filePath)) {
                 // Ask the user if they want to reload the camera
                 QMessageBox::StandardButton reply;
@@ -166,7 +172,7 @@ void CameraHandler::OpenCamera(const string &cameraUrl, const QString &cameranam
 }
 
 
-void CameraHandler::OpenCamera_single(const string &cameraUrl, const QString &cameraname)
+void CameraHandler::OpenCamera_single(const std::string &cameraUrl, const QString &cameraname)
 {
     for (auto& camera: cameras)
     {
@@ -177,7 +183,7 @@ void CameraHandler::OpenCamera_single(const string &cameraUrl, const QString &ca
         }
     }
 
-    VideoCapture videoCapture(cameraUrl);
+    cv::VideoCapture videoCapture(cameraUrl);
     if(!videoCapture.isOpened())
     {
         qDebug() << "Error opening Camera" << cameraname;
@@ -208,7 +214,7 @@ void CameraHandler::CloseCamera(const QString &cameraname)
         it->videoWriter.release();
 
         // Capture CameraRecording before erasing the camera
-        QVector<QPair<QDate, QPair<Mat, QTime>>> cameraRecording = it->CameraRecording;
+        QVector<QPair<QDate, QPair<cv::Mat, QTime>>> cameraRecording = it->CameraRecording;
 
         it->CameraRecording.clear();
 
@@ -247,7 +253,7 @@ void CameraHandler::CloseCamera(const QString &cameraname)
 
 const QImage &CameraHandler::getLatestFrame(const QString &cameraname) const
 {
-    auto it = find_if(cameras.begin(), cameras.end(), [cameraname](const CameraInfo &camera) {
+    auto it = std::find_if(cameras.begin(), cameras.end(), [cameraname](const CameraInfo &camera) {
         return camera.cameraname == cameraname;
     });
 
@@ -338,10 +344,10 @@ void CameraHandler::updateFrames()
     }
 }
 
-Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
+cv::Mat CameraHandler::facedetection(cv::Mat frame, CameraInfo &camera) {
     // Resize the input frame to a smaller size for faster processing
-    Mat resizedFrame;
-    resize(frame, resizedFrame, Size(), camera.scaleFactor, camera.scaleFactor);
+    cv::Mat resizedFrame;
+    cv::resize(frame, resizedFrame, cv::Size(), camera.scaleFactor, camera.scaleFactor);
 
     if(!camera.armed)
     {
@@ -352,11 +358,11 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
     const double confidenceThreshold = 85.0; // Adjust this value as needed
 
     // Convert the resized frame to grayscale
-    Mat frame_gray;
-    cvtColor(resizedFrame, frame_gray, COLOR_BGR2GRAY);
+    cv::Mat frame_gray;
+    cvtColor(resizedFrame, frame_gray, cv::COLOR_BGR2GRAY);
 
     // Detect faces in the resized grayscale frame
-    vector<Rect> faces;
+    std::vector<cv::Rect> faces;
     double scaleFactor = 1.3; // Experiment with different values (e.g., 1.1, 1.2, etc.)
     int minNeighbors = 1; // Experiment with different values (e.g., 3, 5, 7, etc.)
     int flags = 0;
@@ -400,10 +406,10 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
     }
     else {
         // At least one face detected
-        for (const Rect& face : faces)
+        for (const cv::Rect& face : faces)
         {
             // Extract face region
-            Mat faceROI = frame_gray(face);
+            cv::Mat faceROI = frame_gray(face);
 
             // Perform face recognition
             int label = -1;
@@ -413,17 +419,17 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
             // Display recognized face label if confidence is above threshold
             if (label != -1 && confidence < confidenceThreshold) {
                 // Draw green rectangle and put recognized label
-                rectangle(resizedFrame, face, Scalar(0, 255, 0), 1);
+                rectangle(resizedFrame, face, cv::Scalar(0, 255, 0), 1);
             }
             else {
                 // Draw red rectangle for unknown face or low-confidence prediction
-                rectangle(resizedFrame, face, Scalar(0, 0, 255), 1);
-                // // Save the detected face
-                // QString filename = QString("unrecognized_face_%1.jpg").arg(unrecognizedCount);
-                // QString filepath = QString("faces/") + filename; // Fix filepath construction
-                // qDebug() << filename;
-                // imwrite(filepath.toStdString(), faceROI);
-                // unrecognizedCount++;
+                rectangle(resizedFrame, face, cv::Scalar(0, 0, 255), 1);
+                // Save the detected face
+                QString filename = QString("unrecognized_face_%1.jpg").arg(unrecognizedCount);
+                QString filepath = QString("faces/") + filename; // Fix filepath construction
+                qDebug() << filename;
+                imwrite(filepath.toStdString(), faceROI);
+                unrecognizedCount++;
             }
         }
 
@@ -462,15 +468,15 @@ Mat CameraHandler::facedetection(Mat frame, CameraInfo &camera) {
 void CameraHandler::processFrame(CameraInfo& camera)
 {
     QDateTime currentDateTime = QDateTime::currentDateTime();
-    Mat frame;
-    Mat newframe;
+    cv::Mat frame;
+    cv::Mat newframe;
     camera.videoCapture.read(frame);
 
     if (frame.empty() && !camera.isError) {
         qDebug() << "Error reading frame from " << camera.cameraname;
         camera.isError = true;
 
-        Mat blackFrame(1, 1, CV_8UC3, cv::Scalar(0, 0, 0));
+        cv::Mat blackFrame(1, 1, CV_8UC3, cv::Scalar(0, 0, 0));
 
         // Append the frame buffer to CameraRecording with the current date
         camera.CameraRecording.append(qMakePair(currentDateTime.date(), qMakePair(blackFrame, currentDateTime.time())));
@@ -489,7 +495,7 @@ void CameraHandler::processFrame(CameraInfo& camera)
 }
 
 
-QImage CameraHandler::matToImage(const Mat &mat) const
+QImage CameraHandler::matToImage(const cv::Mat &mat) const
 {
 
     if (mat.channels() == 3)
@@ -522,7 +528,7 @@ QString CameraHandler::getCameraName(int index) const
 
 bool CameraHandler::getCameraError(const QString &cameraName) const
 {
-    auto it = find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
+    auto it = std::find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
         return camera.cameraname == cameraName;
     });
 
@@ -536,9 +542,9 @@ bool CameraHandler::getCameraError(const QString &cameraName) const
     }
 }
 
-string CameraHandler::getCameraUrl(const QString &cameraName) const
+std::string CameraHandler::getCameraUrl(const QString &cameraName) const
 {
-    auto it = find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
+    auto it = std::find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
         return camera.cameraname == cameraName;
     });
 
@@ -554,7 +560,7 @@ string CameraHandler::getCameraUrl(const QString &cameraName) const
 
 bool CameraHandler::getArmedStatus(const QString &cameraName) const
 {
-    auto it = find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
+    auto it = std::find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
         return camera.cameraname == cameraName;
     });
 
@@ -570,7 +576,7 @@ bool CameraHandler::getArmedStatus(const QString &cameraName) const
 
 double CameraHandler::getScalefactor(const QString &cameraName)
 {
-    auto it = find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
+    auto it = std::find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
         return camera.cameraname == cameraName;
     });
 
@@ -587,7 +593,7 @@ double CameraHandler::getScalefactor(const QString &cameraName)
 
 void CameraHandler::changeCamerastatus(const QString &cameraName)
 {
-    auto it = find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
+    auto it = std::find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
         return camera.cameraname == cameraName;
     });
 
@@ -607,7 +613,7 @@ void CameraHandler::changeCamerastatus(const QString &cameraName)
 
 void CameraHandler::changeScalefactor(double value, const QString &cameraName)
 {
-    auto it = find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
+    auto it = std::find_if(cameras.begin(), cameras.end(), [cameraName](const CameraInfo &camera) {
         return camera.cameraname == cameraName;
     });
 
@@ -629,7 +635,7 @@ void CameraHandler::printConnectedCameras() const
     }
 }
 
-QVector<QPair<QDate, QPair<Mat, QTime>>> CameraHandler::getFrameBuffer(const QString& cameraname) const {
+QVector<QPair<QDate, QPair<cv::Mat, QTime>>> CameraHandler::getFrameBuffer(const QString& cameraname) const {
     auto it = std::find_if(cameras.begin(), cameras.end(), [cameraname](const CameraInfo& camera) {
         return camera.cameraname == cameraname;
     });
@@ -638,7 +644,7 @@ QVector<QPair<QDate, QPair<Mat, QTime>>> CameraHandler::getFrameBuffer(const QSt
         return it->CameraRecording;
     }
 
-    return QVector<QPair<QDate, QPair<Mat, QTime>>>(); // Return empty buffer if not found
+    return QVector<QPair<QDate, QPair<cv::Mat, QTime>>>(); // Return empty buffer if not found
 }
 
 void CameraHandler::clearFrameBuffer(const QString& cameraname) {
@@ -659,21 +665,21 @@ void CameraHandler::queueSerializationTask(CameraInfo &camera)
     });
 }
 
-void serializeMat(QDataStream &stream, const Mat &mat)
+void serializeMat(QDataStream &stream, const cv::Mat &mat)
 {
-    // Convert the Mat object to a QByteArray for serialization
+    // Convert the cv::Mat object to a QByteArray for serialization
     QByteArray matData;
     QDataStream dataStream(&matData, QIODevice::WriteOnly);
     dataStream << mat.cols << mat.rows << mat.type() << QByteArray((char*)mat.data, mat.total() * mat.elemSize());
 
-    // Serialize the QByteArray containing Mat data
+    // Serialize the QByteArray containing cv::Mat data
     stream << matData;
 }
 
 
-void deserializeMat(QDataStream &stream, Mat &mat)
+void deserializeMat(QDataStream &stream, cv::Mat &mat)
 {
-    // Deserialize the Mat object from the QByteArray
+    // Deserialize the cv::Mat object from the QByteArray
     QByteArray matData;
     stream >> matData;
 
@@ -681,7 +687,7 @@ void deserializeMat(QDataStream &stream, Mat &mat)
     int cols, rows, type;
     dataStream >> cols >> rows >> type;
 
-    mat = Mat(rows, cols, type);
+    mat = cv::Mat(rows, cols, type);
     dataStream.readRawData((char*)mat.data, mat.total() * mat.elemSize());
 }
 
@@ -695,14 +701,14 @@ void CameraHandler::serialize(const CameraInfo &camera)
         // Serialize the number of frames in the frame buffer
         out << camera.CameraRecording.size();
 
-        // Serialize each frame (Mat object) and its corresponding QTime
+        // Serialize each frame (cv::Mat object) and its corresponding QTime
         for (const auto& framePair : camera.CameraRecording) {
             out << framePair.first;
 
             // Serialize the QTime
             out << framePair.second.second;
 
-            // Serialize the Mat object
+            // Serialize the cv::Mat object
             serializeMat(out, framePair.second.first);
         }
 
@@ -736,7 +742,7 @@ void CameraHandler::deserialize(CameraInfo &camera)
 
         qint64 bytesRead = sizeof(numFrames);
 
-        // Deserialize each frame (Mat object) and its corresponding QTime
+        // Deserialize each frame (cv::Mat object) and its corresponding QTime
         for (int i = 0; i < numFrames; ++i) {
             if (progressDialog.wasCanceled())
                 break;
@@ -749,7 +755,7 @@ void CameraHandler::deserialize(CameraInfo &camera)
             in >> time;
             bytesRead += sizeof(time);
 
-            Mat frame;
+            cv::Mat frame;
             deserializeMat(in, frame);
             bytesRead += frame.total() * frame.elemSize();
             qDebug() << bytesRead;

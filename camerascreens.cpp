@@ -2,6 +2,8 @@
 #include "camerascreens.h"
 #include "ui_camerascreens.h"
 #include "customlabel.h"
+#include "rewindui.h"
+#include "focusview.h"
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QPushButton>
@@ -13,7 +15,7 @@
 #include <QTimer>
 #include <QTabBar>
 
-CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget, const vector<std::pair<QString, QString>> &cameras)
+CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget, const std::vector<std::pair<QString, QString>> &cameras)
     : QWidget(parent), ui(new Ui::CameraScreens), parentWidget(parentWidget), cameras(cameras)
 {
 

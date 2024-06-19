@@ -2,6 +2,7 @@
 #include <QImage>
 #include <QDebug>
 
+
 CameraWorker::CameraWorker(const std::string& url, double scaleFactor, QObject* parent)
     : QObject(parent), cameraUrl(url), scaleFactor(scaleFactor), running(false) {
     capture.open(cameraUrl);

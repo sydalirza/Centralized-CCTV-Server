@@ -16,14 +16,11 @@ SOURCES += \
         camerasettings.cpp \
         cameraworker.cpp \
         customlabel.cpp \
-        facerecognition.cpp \
         focusview.cpp \
-        loginform.cpp \
         main.cpp \
         mainwindow.cpp \
         recordingworker.cpp \
-        rewindui.cpp \
-        singleviewwidget.cpp
+        rewindui.cpp
 
 TRANSLATIONS += \
     ImageViewer_en_US.ts
@@ -39,10 +36,8 @@ FORMS += \
     camerascreens.ui \
     camerasettings.ui \
     focusview.ui \
-    loginform.ui \
     mainwindow.ui \
-    rewindui.ui \
-    singleviewwidget.ui
+    rewindui.ui
 
 HEADERS += \
     camerahandler.h \
@@ -50,27 +45,38 @@ HEADERS += \
     camerasettings.h \
     cameraworker.h \
     customlabel.h \
-    facerecognition.h \
     focusview.h \
-    loginform.h \
     mainwindow.h \
     recordingworker.h \
-    rewindui.h \
-    singleviewwidget.h
+    rewindui.h
 
 
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/x64/vc16/lib/ -lopencv_world480
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/x64/vc16/lib/ -lopencv_world480d
-else:unix: LIBS += -L$$PWD/../OpenCV/opencv/build/x64/vc16/lib/ -lopencv_world480
+# For MSVC Build
+# win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/x64/vc16/lib/ -lopencv_world480
+# else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/x64/vc16/lib/ -lopencv_world480d
+# else:unix: LIBS += -L$$PWD/../OpenCV/opencv/build/x64/vc16/lib/ -lopencv_world480
 
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/install/x64/vc17/lib/ -lopencv_face480
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/install/x64/vc17/lib/ -lopencv_face480d
-else:unix: LIBS += -L$$PWD/../OpenCV/opencv/build/install/x64/vc17/lib/ -lopencv_face480
+# win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/install/x64/vc17/lib/ -lopencv_face480
+# else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../OpenCV/opencv/build/install/x64/vc17/lib/ -lopencv_face480d
+# else:unix: LIBS += -L$$PWD/../OpenCV/opencv/build/install/x64/vc17/lib/ -lopencv_face480
+
+# INCLUDEPATH += $$PWD/../OpenCV/opencv/build/install/include
+# DEPENDPATH += $$PWD/../OpenCV/opencv/build/install/include
 
 
+# For MinGW Build
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../OpenCV-MinGW/build/install/x64/mingw/lib/ -llibopencv_world4100.dll
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../OpenCV-MinGW/build/install/x64/mingw/lib/ -llibopencv_world4100.dll
+else:unix: LIBS += -L$$PWD/../OpenCV-MinGW/build/install/x64/mingw/lib/ -llibopencv_world4100.dll.a
 
-INCLUDEPATH += $$PWD/../OpenCV/opencv/build/install/include
-DEPENDPATH += $$PWD/../OpenCV/opencv/build/install/include
+INCLUDEPATH += $$PWD/../OpenCV-MinGW/build/install/include
+DEPENDPATH += $$PWD/../OpenCV-MinGW/build/install/include
+
+INCLUDEPATH += $$PWD/../dlib-19.24/include
+DEPENDPATH += $$PWD/../dlib-19.24/include
+LIBS += -L$$PWD/../dlib-19.24/debug_build
+LIBS += -ldlib
 
 DISTFILES += \
     error.png
+
