@@ -16,6 +16,8 @@ SOURCES += \
         camerasettings.cpp \
         cameraworker.cpp \
         customlabel.cpp \
+        dlib_utils.cpp \
+        faceshandler.cpp \
         focusview.cpp \
         main.cpp \
         mainwindow.cpp \
@@ -35,6 +37,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 FORMS += \
     camerascreens.ui \
     camerasettings.ui \
+    faceshandler.ui \
     focusview.ui \
     mainwindow.ui \
     rewindui.ui
@@ -45,6 +48,8 @@ HEADERS += \
     camerasettings.h \
     cameraworker.h \
     customlabel.h \
+    dlib_utils.h \
+    faceshandler.h \
     focusview.h \
     mainwindow.h \
     recordingworker.h \
@@ -74,7 +79,7 @@ DEPENDPATH += $$PWD/../OpenCV-MinGW/build/install/include
 
 INCLUDEPATH += $$PWD/../dlib-19.24/include
 DEPENDPATH += $$PWD/../dlib-19.24/include
-LIBS += -L$$PWD/../dlib-19.24/debug_build
+LIBS += -L$$PWD/../dlib-19.24/build
 LIBS += -ldlib
 
 DISTFILES += \

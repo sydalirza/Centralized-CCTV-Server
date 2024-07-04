@@ -17,8 +17,9 @@ CameraSettings::CameraSettings(QWidget *parent)
 {
     ui->setupUi(this);
     // Connect to the SQLite database
-    db = QSqlDatabase::addDatabase("QSQLITE");
+    db = QSqlDatabase::addDatabase("QSQLITE", "connection1");
     db.setDatabaseName("cameras.db"); // Assuming the SQLite database file is named cameras.db
+
     if (!db.open()) {
         qDebug() << "Error: Failed to open database";
     }
@@ -264,10 +265,13 @@ void CameraSettings::on_tableitem_delete_clicked()
             deleteQuery.prepare("DELETE FROM cameradetails WHERE camera_name = :name");
             deleteQuery.bindValue(":name", cameraName);
 
-            if (!deleteQuery.exec()) {
+            if (!deleteQuery.exec())
+            {
                 qDebug() << "Error executing delete query:" << deleteQuery.lastError().text();
                 QMessageBox::critical(this, "Error", "Error executing delete query: " + deleteQuery.lastError().text());
-            } else {
+            }
+            else
+            {
                 qDebug() << "Deleted";
                 update_table(); // Refresh the table view after deletion
                 populate_camera_names();
@@ -280,7 +284,8 @@ void CameraSettings::on_tableitem_delete_clicked()
             }
         }
     }
-    else {
+    else
+    {
         qDebug() << "No row selected to delete";
     }
 }

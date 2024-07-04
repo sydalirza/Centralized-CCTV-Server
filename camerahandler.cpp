@@ -1,5 +1,6 @@
 #include "camerahandler.h"
 #include "recordingworker.h"
+#include "dlib_utils.h"
 
 #include <QDebug>
 #include <QImageReader>
@@ -23,7 +24,9 @@
 #include <dlib/string.h>
 #include <dlib/dnn.h>
 
-CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this))
+using namespace dlib;
+
+CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this)), encodings(*new std::vector<dlib::matrix<float, 0, 1>>())
 {
     connect(timer, &QTimer::timeout, this, &CameraHandler::updateFrames);
     timer->start(1); //FPS
@@ -41,7 +44,12 @@ CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTim
 
     qDebug() << "Classifier Loaded!";
 
-    recognizer->read("trained_model.yml");
+    // recognizer->read("trained_model.yml");
+
+    initialize_network();
+    initialize_shape_predictor();
+    load_face_encodings("encode");
+
 
     db = QSqlDatabase::addDatabase("QSQLITE", "cameras_connection"); // Specify a unique connection name
     db.setDatabaseName("cameras.db");
@@ -67,6 +75,50 @@ CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTim
 CameraHandler:: ~CameraHandler(){
     qDebug() << "Closing Camera Handler";
     closeAllCameras();
+}
+
+void CameraHandler::load_face_encodings(const std::string& folder_path)
+{
+    // Initialize Dlib face detector, shape predictor, and face recognition model
+    frontal_face_detector detector = get_frontal_face_detector();
+
+    // Iterate through all images in the folder
+    std::vector<cv::String> filenames;
+    cv::glob(folder_path, filenames);
+
+    for (const auto& filename : filenames)
+    {
+        // Read the image using OpenCV
+        cv::Mat image = cv::imread(filename);
+
+        // Convert OpenCV image to Dlib's format
+        dlib::cv_image<dlib::bgr_pixel> dlib_img(image);
+
+        // Detect faces in the image
+        std::vector<dlib::rectangle> faces = detector(dlib_img);
+
+        // Check if exactly one face is detected
+        if (faces.size() != 1)
+        {
+            std::cerr << "Error: Expected exactly one face in " << filename << ", but found " << faces.size() << " faces." << std::endl;
+            continue;
+        }
+
+        // Get the shape (facial landmarks) of the detected face
+        dlib::full_object_detection shape = sp(dlib_img, faces[0]);
+
+        // Generate the face encoding using Dlib's face recognition model
+        dlib::matrix<dlib::rgb_pixel> face_chip;
+        dlib::extract_image_chip(dlib_img, dlib::get_face_chip_details(shape, 150, 0.25), face_chip);
+        dlib::matrix<float, 0, 1> face_encoding = net(face_chip);
+
+        // Store the face encoding
+        encodings.push_back(face_encoding);
+
+        // Print the filename and the corresponding encoding
+        std::cout << "Filename: " << filename << std::endl;
+        std::cout << "Face Encoding: " << face_encoding << std::endl;
+    }
 }
 
 void CameraHandler::closeAllCameras()
@@ -355,20 +407,18 @@ cv::Mat CameraHandler::facedetection(cv::Mat frame, CameraInfo &camera) {
     }
 
     // Set confidence threshold
-    const double confidenceThreshold = 85.0; // Adjust this value as needed
+    const double confidenceThreshold = 0.6; // Adjust this value as needed
 
-    // Convert the resized frame to grayscale
     cv::Mat frame_gray;
     cvtColor(resizedFrame, frame_gray, cv::COLOR_BGR2GRAY);
 
-    // Detect faces in the resized grayscale frame
     std::vector<cv::Rect> faces;
     double scaleFactor = 1.3; // Experiment with different values (e.g., 1.1, 1.2, etc.)
     int minNeighbors = 1; // Experiment with different values (e.g., 3, 5, 7, etc.)
     int flags = 0;
     faceCascade.detectMultiScale(frame_gray, faces, scaleFactor, minNeighbors, flags);
 
-    static int unrecognizedCount = 0;
+    bool match_found = false;
     // Check the number of detected faces
     if (faces.empty())
     {
@@ -406,30 +456,35 @@ cv::Mat CameraHandler::facedetection(cv::Mat frame, CameraInfo &camera) {
     }
     else {
         // At least one face detected
-        for (const cv::Rect& face : faces)
+        for (auto face : faces)
         {
-            // Extract face region
-            cv::Mat faceROI = frame_gray(face);
+            // Convert OpenCV rect to dlib rect
+            dlib::rectangle dlibFaceRect(face.x, face.y, face.x + face.width, face.y + face.height);
 
-            // Perform face recognition
-            int label = -1;
-            double confidence = 0.0;
-            recognizer->predict(faceROI, label, confidence);
+            dlib::cv_image<unsigned char> cimg(frame_gray);
+            // Find the landmarks using the 5 landmarks model
+            dlib::full_object_detection shape = sp(cimg, dlibFaceRect);
+            // Extract the face chip
+            dlib::matrix<dlib::rgb_pixel> face_chip;
+            extract_image_chip(cimg, get_face_chip_details(shape, 150, 0.25), face_chip);
+            // Get the face encoding
+            dlib::matrix<float, 0, 1> face_encoding = net(face_chip);
 
-            // Display recognized face label if confidence is above threshold
-            if (label != -1 && confidence < confidenceThreshold) {
-                // Draw green rectangle and put recognized label
-                rectangle(resizedFrame, face, cv::Scalar(0, 255, 0), 1);
+            // Compare this face encoding with the known faces
+            double min_distance = confidenceThreshold; // Threshold for recognizing a face
+            for (const auto& known_encoding : encodings) {
+                double distance = length(face_encoding - known_encoding);
+                if (distance < min_distance) {
+                    match_found = true;
+                    break;
+                }
             }
-            else {
-                // Draw red rectangle for unknown face or low-confidence prediction
-                rectangle(resizedFrame, face, cv::Scalar(0, 0, 255), 1);
-                // Save the detected face
-                QString filename = QString("unrecognized_face_%1.jpg").arg(unrecognizedCount);
-                QString filepath = QString("faces/") + filename; // Fix filepath construction
-                qDebug() << filename;
-                imwrite(filepath.toStdString(), faceROI);
-                unrecognizedCount++;
+
+            // Draw a rectangle and label on the face
+            if (match_found) {
+                cv::rectangle(resizedFrame, face, cv::Scalar(0, 255, 0), 1);
+            } else {
+                cv::rectangle(resizedFrame, face, cv::Scalar(0, 0, 255), 1);
             }
         }
 
@@ -442,28 +497,33 @@ cv::Mat CameraHandler::facedetection(cv::Mat frame, CameraInfo &camera) {
             }
             else
             {
-                QDateTime currentDateTime = QDateTime::currentDateTime();
-                QString formattedDateTime = currentDateTime.toString("yyyy-MM-dd hh:mm:ss.zzz");
-                qDebug() << "Person detected in the " << camera.cameraname << " camera at " << formattedDateTime;
-                camera.persondetected = true;
-                if (camera.CameraRecording.length() >= 100 && !camera.isRecording)
+                if (!match_found)
                 {
-                    camera.startFrameIndex = camera.CameraRecording.length() - 100;
-                    camera.isRecording = true;
+                    QDateTime currentDateTime = QDateTime::currentDateTime();
+                    QString formattedDateTime = currentDateTime.toString("yyyy-MM-dd hh:mm:ss.zzz");
+                    qDebug() << "Person detected in the " << camera.cameraname << " camera at " << formattedDateTime;
+                    camera.persondetected = true;
+                    if (camera.CameraRecording.length() >= 100 && !camera.isRecording)
+                    {
+                        camera.startFrameIndex = camera.CameraRecording.length() - 100;
+                        camera.isRecording = true;
+                    }
+                    else if (camera.CameraRecording.length() < 100 && !camera.isRecording)
+                    {
+                        camera.startFrameIndex = 0;
+                        camera.isRecording = true;
+                    }
                 }
-                else if (camera.CameraRecording.length() < 100 && !camera.isRecording)
+                else
                 {
-                    camera.startFrameIndex = 0;
-                    camera.isRecording = true;
+                    qDebug() << "Recognized Person";
                 }
             }
-
         }
     }
 
     return resizedFrame;
 }
-
 
 void CameraHandler::processFrame(CameraInfo& camera)
 {
@@ -624,7 +684,6 @@ void CameraHandler::changeScalefactor(double value, const QString &cameraName)
 }
 
 
-
 void CameraHandler::printConnectedCameras() const
 {
     qDebug() << "Connected Cameras:";
@@ -775,3 +834,130 @@ void CameraHandler::deserialize(CameraInfo &camera)
         qDebug() << "Error opening file for reading:" << file.errorString();
     }
 }
+
+void CameraHandler::add_new_face(dlib::matrix<float, 0, 1> face_encoding)
+{
+    qDebug()<< "Face Added!";
+    encodings.push_back(face_encoding);
+}
+
+
+// cv::Mat CameraHandler::facedetection(cv::Mat frame, CameraInfo &camera) {
+//     // Resize the input frame to a smaller size for faster processing
+//     cv::Mat resizedFrame;
+//     cv::resize(frame, resizedFrame, cv::Size(), camera.scaleFactor, camera.scaleFactor);
+
+//     if(!camera.armed)
+//     {
+//         return resizedFrame;
+//     }
+
+//     // Set confidence threshold
+//     const double confidenceThreshold = 85.0; // Adjust this value as needed
+
+//     // Convert the resized frame to grayscale
+//     cv::Mat frame_gray;
+//     cvtColor(resizedFrame, frame_gray, cv::COLOR_BGR2GRAY);
+
+//     // Detect faces in the resized grayscale frame
+// std::vector<cv::Rect> faces;
+// double scaleFactor = 1.3; // Experiment with different values (e.g., 1.1, 1.2, etc.)
+// int minNeighbors = 1; // Experiment with different values (e.g., 3, 5, 7, etc.)
+// int flags = 0;
+// faceCascade.detectMultiScale(frame_gray, faces, scaleFactor, minNeighbors, flags);
+
+//     static int unrecognizedCount = 0;
+//     // Check the number of detected faces
+//     if (faces.empty())
+//     {
+//         if (camera.isRecording && camera.persondetected && camera.CameraRecording.length() >= camera.startFrameIndex + 100)
+//         {
+//             qDebug() << "Person has left the frame";
+//             camera.endFrameIndex = camera.CameraRecording.length()-10;
+//             qDebug() << "Start = " << camera.startFrameIndex << " End = " << camera.endFrameIndex << "Current = " << camera.CameraRecording.length();
+
+//             RecordingWorker* worker = new RecordingWorker;
+
+//             // Move the worker object to a separate thread
+//             // Create a new thread
+//             QThread* recordingThread = new QThread;
+
+//             // Move the RecordingWorker instance to the new thread
+//             worker -> moveToThread(recordingThread);
+
+//             // Call recordvideo from the new thread using lambda function
+//             QObject::connect(recordingThread, &QThread::started, [=]() {
+//                 worker -> recordvideo(camera.startFrameIndex, camera.endFrameIndex, camera.cameraname, camera.CameraRecording, db);
+//             });
+
+//             // Connect thread's finished signal to deleteLater() slot to clean up when the thread finishes
+//             QObject::connect(recordingThread, &QThread::finished, recordingThread, &QThread::deleteLater);
+
+//             // Start the thread
+//             recordingThread->start();
+
+//             // No faces detected, reset persondetected
+//             camera.persondetected = false;
+//             camera.isRecording = false;
+//             camera.cooldowntime = camera.endFrameIndex;
+//         }
+//     }
+//     else {
+//         // At least one face detected
+//         for (const cv::Rect& face : faces)
+//         {
+//             // Extract face region
+//             cv::Mat faceROI = frame_gray(face);
+
+//             // Perform face recognition
+//             int label = -1;
+//             double confidence = 0.0;
+//             recognizer->predict(faceROI, label, confidence);
+
+//             // Display recognized face label if confidence is above threshold
+//             if (label != -1 && confidence < confidenceThreshold) {
+//                 // Draw green rectangle and put recognized label
+//                 cv::rectangle(resizedFrame, face, cv::Scalar(0, 255, 0), 1);
+//             }
+//             else {
+//                 // Draw red rectangle for unknown face or low-confidence prediction
+//                 cv::rectangle(resizedFrame, face, cv::Scalar(0, 0, 255), 1);
+//                 // Save the detected face
+//                 QString filename = QString("unrecognized_face_%1.jpg").arg(unrecognizedCount);
+//                 QString filepath = QString("faces/") + filename; // Fix filepath construction
+//                 qDebug() << filename;
+//                 imwrite(filepath.toStdString(), faceROI);
+//                 unrecognizedCount++;
+//             }
+//         }
+
+//         // Print a detection message based on the number of detected faces
+//         if (faces.size() >= 1 && !camera.persondetected && !camera.isRecording)
+//         {
+//             if (camera.CameraRecording.length() - camera.cooldowntime <= 200 && camera.cooldowntime != 0)
+//             {
+
+//             }
+//             else
+//             {
+//                 QDateTime currentDateTime = QDateTime::currentDateTime();
+//                 QString formattedDateTime = currentDateTime.toString("yyyy-MM-dd hh:mm:ss.zzz");
+//                 qDebug() << "Person detected in the " << camera.cameraname << " camera at " << formattedDateTime;
+//                 camera.persondetected = true;
+//                 if (camera.CameraRecording.length() >= 100 && !camera.isRecording)
+//                 {
+//                     camera.startFrameIndex = camera.CameraRecording.length() - 100;
+//                     camera.isRecording = true;
+//                 }
+//                 else if (camera.CameraRecording.length() < 100 && !camera.isRecording)
+//                 {
+//                     camera.startFrameIndex = 0;
+//                     camera.isRecording = true;
+//                 }
+//             }
+
+//         }
+//     }
+
+//     return resizedFrame;
+// }

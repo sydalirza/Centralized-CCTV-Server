@@ -15,6 +15,7 @@
 #include <QTabBar>
 #include <camerascreens.h>
 #include <camerasettings.h>
+#include <faceshandler.h>
 #include <QScreen>
 #include <QGuiApplication>
 #include <QSqlQuery>
@@ -45,6 +46,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(cameraSettingsInstance, &CameraSettings::add_camera, this, &MainWindow::update_camera_buttons);
     connect(cameraSettingsInstance, &CameraSettings::delete_camera, this, &MainWindow::remove_camera_button);
 
+    facesHandlerInstance = new faceshandler();
+    connect(facesHandlerInstance, &faceshandler::add_face, this, &MainWindow::add_new_face);
+
     // Setup the timer to update date and time
     QTimer *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &MainWindow::updateDateTime);
@@ -68,9 +72,6 @@ void MainWindow::setMaxSizeBasedOnScreen()
 {
     QSize screenSize = QGuiApplication::primaryScreen()->availableSize();
     this->setMaximumSize(screenSize);
-
-    // Set the initial size to be smaller than the screen size
-    // this->resize(screenSize.width() * 0.8, screenSize.height() * 0.8);
 }
 
 void MainWindow::on_tabWidget_tabCloseRequested(int index)
@@ -196,16 +197,8 @@ void MainWindow::openDefaultTab()
 
     CameraScreens *defaultTab = new CameraScreens(this, this);
     int tabIndex = ui->tabWidget->addTab(defaultTab, "Main View");
-    QTabBar* tabBar = ui->tabWidget->findChild<QTabBar*>();
-    if (tabBar)
-    {
-        QWidget* closeButton = tabBar->tabButton(tabIndex, QTabBar::RightSide);
-        if (closeButton)
-        {
-            closeButton->resize(0, 0);
-            closeButton->setVisible(false);
-        }
-    }
+    hide_close_button(tabIndex);
+
     qDebug() << "Number of Tabs: " << ui->tabWidget->count();
     qDebug() << "Current Index: " << ui->tabWidget->currentIndex();
 }
@@ -265,7 +258,8 @@ void MainWindow::on_cameras_button_clicked()
 {
     if(!tab_already_open("Cameras"))
     {
-        ui -> tabWidget -> addTab(cameraSettingsInstance, "Cameras");
+        int tabIndex = ui -> tabWidget -> addTab(cameraSettingsInstance, "Cameras");
+        hide_close_button(tabIndex);
     }
     else
     {
@@ -322,5 +316,44 @@ void MainWindow::on_four_layout_clicked()
 void MainWindow::on_sixteen_layout_clicked()
 {
     cameraScreens->on_sixteen_camera_clicked();
+}
+
+
+void MainWindow::on_settings_button_clicked()
+{
+    if(!tab_already_open("Saved Faces"))
+    {
+        int tabIndex = ui -> tabWidget -> addTab(facesHandlerInstance, "Saved Faces");
+        hide_close_button(tabIndex);
+    }
+    else
+    {
+        qDebug() << "Tab Already Open";
+    }
+}
+
+void MainWindow::add_new_face(dlib::matrix<float, 0, 1> face_encoding)
+{
+    emit cameraScreens->add_new_face(face_encoding);
+}
+
+void MainWindow::hide_close_button(int tabIndex)
+{
+    QTabBar* tabBar = ui->tabWidget->findChild<QTabBar*>();
+    if (tabBar)
+    {
+        QWidget* closeButton = tabBar->tabButton(tabIndex, QTabBar::RightSide);
+        if (closeButton)
+        {
+            closeButton->resize(0, 0);
+            closeButton->setVisible(false);
+        }
+    }
+}
+
+void MainWindow::on_loadfaceencodings_button_clicked()
+{
+    facesHandlerInstance -> fetch_faceEncodings();
+    ui->loadfaceencodings_button->setEnabled(false);
 }
 

@@ -45,7 +45,7 @@
          <item>
           <widget class="QPushButton" name="settings_button">
            <property name="text">
-            <string>Settings</string>
+            <string>Add Faces</string>
            </property>
           </widget>
          </item>
@@ -66,6 +66,26 @@
           <widget class="QLabel" name="date_time">
            <property name="text">
             <string>DateTime</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="loadfaceencodings_button">
+           <property name="text">
+            <string>Load Face Encodings</string>
            </property>
           </widget>
          </item>

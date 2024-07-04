@@ -18,6 +18,16 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/face.hpp>
 
+#include <dlib/opencv.h>
+#include <dlib/image_processing.h>
+#include <dlib/image_processing/frontal_face_detector.h>
+#include <dlib/image_processing/render_face_detections.h>
+#include <dlib/image_processing.h>
+#include <dlib/image_io.h>
+#include <dlib/clustering.h>
+#include <dlib/string.h>
+#include <dlib/dnn.h>
+
 // using namespace cv::face;
 // using namespace cv;
 
@@ -47,6 +57,8 @@ public:
     double getScalefactor(const QString &cameraName);
     void changeScalefactor(double value, const QString &cameraName);
 
+public slots:
+    void add_new_face(dlib::matrix<float, 0, 1> face_encoding);
 
 signals:
     void frameUpdated(const QImage& frame, const QString& cameraname);
@@ -57,7 +69,6 @@ signals:
 private slots:
     void updateFrames();
     void cleanupOldFrames();
-
 
 private:
 
@@ -118,6 +129,12 @@ private:
     QSqlDatabase db;
 
     bool cameras_armed = false;
+
+    std::vector<dlib::matrix<float, 0, 1>>& encodings;
+
+    dlib::frontal_face_detector detector = dlib::get_frontal_face_detector();
+
+    void load_face_encodings(const std::string& folder_path);
 };
 
 #endif

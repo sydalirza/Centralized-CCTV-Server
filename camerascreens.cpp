@@ -19,7 +19,6 @@ CameraScreens::CameraScreens(QWidget *parent, QWidget *parentWidget, const std::
     : QWidget(parent), ui(new Ui::CameraScreens), parentWidget(parentWidget), cameras(cameras)
 {
 
-
     ui->setupUi(this);
 
     updateCameraLayout(16, camerasPerWall); // Blank
@@ -62,6 +61,7 @@ void CameraScreens::initialize()
 
     // Connect CameraHandler's signal to handleFrameUpdate slot
     connect(&cameraHandler, &CameraHandler::frameUpdated, this, &CameraScreens::handleFrameUpdate);
+    connect(this, &CameraScreens::add_new_face, &cameraHandler, &CameraHandler::add_new_face);
 }
 
 CameraScreens::~CameraScreens()
@@ -181,8 +181,16 @@ void CameraScreens::onImageClicked()
                 if (tabWidget) {
                     int newIndex = tabWidget->addTab(new RewindUi(cameraName, cameraHandler.getFrameBuffer(cameraName), parentWidget), cameraName);
                     tabWidget->setCurrentIndex(newIndex);
-                    qDebug() << "Number of Tabs: " << tabWidget->count();
-                    qDebug() << "Current Index: " << tabWidget->currentIndex();
+                    QTabBar* tabBar = tabWidget->findChild<QTabBar*>();
+                    if (tabBar)
+                    {
+                        QWidget* closeButton = tabBar->tabButton(newIndex, QTabBar::RightSide);
+                        if (closeButton)
+                        {
+                            closeButton->resize(0, 0);
+                            closeButton->setVisible(false);
+                        }
+                    }
                 }
             });
 
@@ -210,6 +218,16 @@ void CameraScreens::onImageDoubleClicked() {
         if (tabWidget) {
             int newIndex = tabWidget->addTab(new FocusView(tabWidget, cameraName, singlecameraUrl, cameraHandler.getScalefactor(cameraName)), cameraName);
             tabWidget->setCurrentIndex(newIndex);
+            QTabBar* tabBar = tabWidget->findChild<QTabBar*>();
+            if (tabBar)
+            {
+                QWidget* closeButton = tabBar->tabButton(newIndex, QTabBar::RightSide);
+                if (closeButton)
+                {
+                    closeButton->resize(0, 0);
+                    closeButton->setVisible(false);
+                }
+            }
         }
     }
 }
@@ -407,7 +425,7 @@ void CameraScreens::handleTabCloseRequested(int index)
             QWidget *widget = tabWidget->widget(index);
             if (widget) {
                 // Check if the widget's objectName is "CameraSettings"
-                if (widget->objectName() == "CameraSettings") {
+                if (widget->objectName() == "CameraSettings" || widget->objectName() == "faceshandler") {
                     tabWidget->removeTab(index); // Remove the tab first
                     return;
                 }

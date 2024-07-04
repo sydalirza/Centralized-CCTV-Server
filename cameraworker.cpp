@@ -4,19 +4,22 @@
 
 
 CameraWorker::CameraWorker(const std::string& url, double scaleFactor, QObject* parent)
-    : QObject(parent), cameraUrl(url), scaleFactor(scaleFactor), running(false) {
+    : QObject(parent), cameraUrl(url), scaleFactor(scaleFactor), running(false)
+{
     capture.open(cameraUrl);
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &CameraWorker::processFrame);
 }
 
-CameraWorker::~CameraWorker() {
+CameraWorker::~CameraWorker()
+{
     if (capture.isOpened()) {
         capture.release();
     }
 }
 
-void CameraWorker::start() {
+void CameraWorker::start()
+{
     if (capture.isOpened()) {
         running = true;
         timer->start(30);  // Process frame every 100 ms
@@ -25,12 +28,14 @@ void CameraWorker::start() {
     }
 }
 
-void CameraWorker::stop() {
+void CameraWorker::stop()
+{
     running = false;
     timer->stop();
 }
 
-void CameraWorker::processFrame() {
+void CameraWorker::processFrame()
+{
     if (!running) return;
 
     cv::Mat frame;

@@ -8,6 +8,7 @@
 #include <QLabel>  // Add this line
 #include "camerasettings.h"
 #include "camerascreens.h"
+#include "faceshandler.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -45,7 +46,6 @@ private slots:
 
     std::vector<std::pair<QString, QString>> getAllCameras();
 
-
     void on_one_layout_clicked();
 
     void on_four_layout_clicked();
@@ -54,11 +54,20 @@ private slots:
 
     void updateDateTime();
 
+    void on_settings_button_clicked();
+
+    void add_new_face(dlib::matrix<float, 0, 1> face_encoding);
+
+    void hide_close_button(int tabIndex);
+
+    void on_loadfaceencodings_button_clicked();
+
 private:
     Ui::MainWindow *ui;
 
     CameraSettings *cameraSettingsInstance = nullptr;
     CameraScreens *cameraScreens = nullptr;
+    faceshandler *facesHandlerInstance = nullptr;
     std::vector<std::pair<QString, QString>> cameras;
 
 };
