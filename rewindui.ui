@@ -74,6 +74,13 @@
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QPushButton" name="cancel_recording">
+            <property name="text">
+             <string>Cancel Recording</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </item>
         <item>

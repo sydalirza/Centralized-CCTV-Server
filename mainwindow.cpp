@@ -48,6 +48,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     facesHandlerInstance = new faceshandler();
     connect(facesHandlerInstance, &faceshandler::add_face, this, &MainWindow::add_new_face);
+    connect(facesHandlerInstance, &faceshandler::delete_face, this, &MainWindow::delete_face);
 
     // Setup the timer to update date and time
     QTimer *timer = new QTimer(this);
@@ -335,6 +336,11 @@ void MainWindow::on_settings_button_clicked()
 void MainWindow::add_new_face(dlib::matrix<float, 0, 1> face_encoding)
 {
     emit cameraScreens->add_new_face(face_encoding);
+}
+
+void MainWindow::delete_face(int num)
+{
+    emit cameraScreens->delete_face(num);
 }
 
 void MainWindow::hide_close_button(int tabIndex)

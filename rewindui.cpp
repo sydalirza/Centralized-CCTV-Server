@@ -2,10 +2,15 @@
 #include "rewindui.h"
 #include "ui_rewindui.h"
 #include <QThread>
+#include <QFileDialog>
 
 RewindUi::RewindUi(const QString& cameraName, const QVector<QPair<QDate, QPair<Mat, QTime>>>& frameBuffer, QWidget* parent)
-    : QWidget(parent), ui(new Ui::RewindUi), isPlaying(false), currentFrameIndex(0), frameBuffer(frameBuffer), cameraname(cameraName) {
+    : QWidget(parent), ui(new Ui::RewindUi), isPlaying(false), currentFrameIndex(0), frameBuffer(frameBuffer), cameraname(cameraName)
+{
     ui->setupUi(this);
+
+    playbackTimer = new QTimer(this);
+    connect(playbackTimer, &QTimer::timeout, this, &RewindUi::updateFrame);
 
     // Connect signals to slots`
     connect(ui->play_button, &QPushButton::clicked, this, &RewindUi::onPlayButtonClicked);
@@ -17,11 +22,11 @@ RewindUi::RewindUi(const QString& cameraName, const QVector<QPair<QDate, QPair<M
     ui->goto_end->setIcon(QIcon("Icons/next.png"));
     ui->goto_start->setIcon(QIcon("Icons/prev.png"));
 
-
     // Disable UI elements initially
     ui->play_button->setEnabled(false);
     ui->pause_button->setEnabled(false);
     ui->horizontalSlider->setEnabled(false);
+    ui->cancel_recording->setEnabled(false);
 
     QTime lastFrameTime = frameBuffer.last().second.second;
 
@@ -43,39 +48,46 @@ RewindUi::RewindUi(const QString& cameraName, const QVector<QPair<QDate, QPair<M
     }
 }
 
-RewindUi::~RewindUi() {
+RewindUi::~RewindUi()
+{
     qDebug() << "Rewind UI deleted";
     delete ui;
 }
 
-void RewindUi::onPlayButtonClicked() {
+void RewindUi::onPlayButtonClicked()
+{
     isPlaying = true;
-    // Start playing frames
-    while (isPlaying && currentFrameIndex < frameBuffer.size()) {
-        // Play frame at currentFrameIndex
-        updateUIFromFrame(currentFrameIndex);
 
-        QCoreApplication::processEvents(); // Allow UI to update
-        // Move to the next frame
-        ++currentFrameIndex;
-    }
+    playbackTimer->start(33); // Set the interval to 33 ms (approx. 30 fps)
 }
 
-void RewindUi::onPauseButtonClicked() {
+void RewindUi::onPauseButtonClicked()
+{
     isPlaying = false;
 }
 
-void RewindUi::onSliderValueChanged(int value) {
+void RewindUi::updateFrame()
+{
+    if (isPlaying && currentFrameIndex < frameBuffer.size()) {
+        updateUIFromFrame(currentFrameIndex);
+        ++currentFrameIndex;
+    } else {
+        playbackTimer->stop();
+    }
+}
+
+void RewindUi::onSliderValueChanged(int value)
+{
     // Handle slider value change
     currentFrameIndex = value;
     updateUIFromFrame(currentFrameIndex);
 }
 
-void RewindUi::updateUIFromFrame(int frameIndex) {
+void RewindUi::updateUIFromFrame(int frameIndex)
+{
     // Update UI elements based on the frame at frameIndex
     Mat frameMat = frameBuffer[frameIndex].second.first;
     QTime currentTime = frameBuffer[frameIndex].second.second;
-
 
     // Display the frame image (assuming you have a QLabel named video_display)
     ui->video_display->setPixmap(QPixmap::fromImage(matToImage(frameMat)).scaled(ui->video_display->size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
@@ -102,6 +114,15 @@ void RewindUi::on_goto_end_clicked()
 
 void RewindUi::on_save_recording_clicked()
 {
+    if(ui->cancel_recording->isEnabled())
+    {
+        ui->cancel_recording->setEnabled(false);
+    }
+    else
+    {
+        ui->cancel_recording->setEnabled(true);
+    }
+
     saving_recording = !saving_recording;
 
     if(saving_recording)
@@ -134,10 +155,26 @@ void RewindUi::on_save_recording_clicked()
         }
         else
         {
+            // Create VideoWriter object
+            QString fileName = QString("%1_%2_%3_%4.mp4")
+                                   .arg(cameraname)
+                                   .arg(frameBuffer[startFrameindex].first.toString())
+                                   .arg(frameBuffer[startFrameindex].second.second.toString("hhmmss"))
+                                   .arg(frameBuffer[endFrameindex].second.second.toString("hhmmss"));
+
+            QString filePath = QFileDialog::getSaveFileName(this, tr("Save Recording"), fileName, tr("Videos (*.mp4);;All Files (*)"));
+
+            if (filePath.isEmpty())
+            {
+                qDebug() << "User cancelled the save operation.";
+                ui->save_recording->setText("Start Recording");
+                ui->cancel_recording->setEnabled(false);
+                return;
+            }
+
             RecordingWorker* worker = new RecordingWorker;
 
             // Move the worker object to a separate thread
-            // Create a new thread
             // Create a new thread
             QThread* recordingThread = new QThread;
 
@@ -145,8 +182,9 @@ void RewindUi::on_save_recording_clicked()
             worker -> moveToThread(recordingThread);
 
             // Call recordvideo from the new thread using lambda function
-            QObject::connect(recordingThread, &QThread::started, [=]() {
-                worker -> recordvideo(startFrameindex, endFrameindex, cameraname, frameBuffer);
+            QObject::connect(recordingThread, &QThread::started, [=]()
+            {
+                worker -> recordvideo(startFrameindex, endFrameindex, cameraname, frameBuffer, filePath);
             });
 
             // Connect thread's finished signal to deleteLater() slot to clean up when the thread finishes
@@ -156,16 +194,20 @@ void RewindUi::on_save_recording_clicked()
             recordingThread->start();
 
             ui->save_recording->setText("Start Recording");
+            ui->cancel_recording->setEnabled(false);
         }
         }
 }
 
 QImage RewindUi::matToImage(Mat& mat)
 {
-    if (mat.channels() == 3) {
+    if (mat.channels() == 3)
+    {
         QImage image(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_RGB888);
         return image.rgbSwapped();
-    } else if (mat.channels() == 1) {
+    }
+    else if (mat.channels() == 1)
+    {
         return QImage(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_Grayscale8);
     }
 
@@ -175,7 +217,8 @@ QImage RewindUi::matToImage(Mat& mat)
 
 void RewindUi::on_date_currentIndexChanged(int index)
 {
-    if (index < 0 || index >= ui->date->count()) {
+    if (index < 0 || index >= ui->date->count())
+    {
         // Invalid index, disable UI elements and return
         ui->play_button->setEnabled(false);
         ui->pause_button->setEnabled(false);
@@ -219,7 +262,6 @@ void RewindUi::on_date_currentIndexChanged(int index)
         // No frames found for the selected date, disable UI elements
         qDebug() << "No frames found from this date";
         disableeverything();
-
     }
 }
 
@@ -246,4 +288,13 @@ void RewindUi::enableeverything()
     ui->goto_end->setEnabled(true);
     ui->goto_start->setEnabled(true);
 
+}
+
+void RewindUi::on_cancel_recording_clicked()
+{
+    ui->cancel_recording->setEnabled(false);
+    ui->save_recording->setText("Start Recording");
+    saving_recording = !saving_recording;
+    ui->from_time->setTime(QTime(0, 0, 0));
+    ui->till_time->setTime(QTime(0, 0, 0));
 }

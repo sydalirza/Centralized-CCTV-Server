@@ -19,6 +19,7 @@ public slots:
     void start();
     void stop();
     void processFrame();
+    void showPlaceholderImage();
 
 private:
     std::string cameraUrl;
@@ -26,6 +27,9 @@ private:
     cv::VideoCapture capture;
     QTimer *timer;
     bool running;
+
+    int reconnectionAttempts;
+    int maxReconnectionAttempts;
 };
 
 #endif // CAMERAWORKER_H

@@ -65,6 +65,9 @@ win32 {
         LIBS += -L$$PWD/../OpenCV-MinGW/build/install/x64/mingw/lib/ -llibopencv_world4100.dll
         LIBS += -L$$PWD/../dlib-19.24/build -ldlib
     }
+    INCLUDEPATH += $$PWD/../OpenCV-MinGW\build\install\include
+    DEPENDPATH += $$PWD/../OpenCV-MinGW\build\install\include
+
     INCLUDEPATH += $$PWD/../dlib-19.24/include
     DEPENDPATH += $$PWD/../dlib-19.24/include
 } else: unix {

@@ -19,6 +19,7 @@ public:
 
     void recordvideo(int startFrameindex, int endFrameindex, const QString &cameraname, const QVector<QPair<QDate, QPair<cv::Mat, QTime>>> &frameBuffer, QSqlDatabase db);
     void recordvideo(int startFrameindex, int endFrameindex, const QString &cameraname, const QVector<QPair<QDate, QPair<cv::Mat, QTime>>> &frameBuffer);
+    void recordvideo(int startFrameindex, int endFrameindex, const QString &cameraname, const QVector<QPair<QDate, QPair<cv::Mat, QTime>>> &frameBuffer, QString filePath);
 
 };
 

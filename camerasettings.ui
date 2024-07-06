@@ -115,7 +115,7 @@
             <item row="0" column="0">
              <widget class="QLabel" name="label">
               <property name="text">
-               <string>Camera Name: </string>
+               <string>Camera Name:</string>
               </property>
              </widget>
             </item>

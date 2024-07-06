@@ -80,8 +80,11 @@ void CameraSettings::on_addbutton_clicked()
     QString username = ui->username->text();
     QString password = ui->password->text();
 
-    qDebug() << name_camera;
-    qDebug() << url_camera;
+    if(name_camera.isEmpty() || url_camera.isEmpty())
+    {
+        QMessageBox::critical(this, "Input Error", "Name or URL of camera cannot be empty.");
+        return;
+    }
 
     // Check if camera_name already exists in the database
     QSqlQuery checkQuery;

@@ -29,11 +29,11 @@ using namespace dlib;
 CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this)), encodings(*new std::vector<dlib::matrix<float, 0, 1>>())
 {
     connect(timer, &QTimer::timeout, this, &CameraHandler::updateFrames);
-    timer->start(1); //FPS
+    timer->start(30); //FPS
 
     // Connect cleanup timer to cleanupOldFrames method
     connect(&cleanupTimer, &QTimer::timeout, this, &CameraHandler::cleanupOldFrames);
-    cleanupTimer.start(24 * 60 * 60 * 1000); // Run once every day
+    cleanupTimer.start(24 * 60 * 60 * 1000); // Runs once every day
 
     std::string faceClassifier = "haarcascade_frontalface_alt2.xml";
 
@@ -51,15 +51,15 @@ CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTim
     load_face_encodings("encode");
 
 
-    db = QSqlDatabase::addDatabase("QSQLITE", "cameras_connection"); // Specify a unique connection name
+    db = QSqlDatabase::addDatabase("QSQLITE", "cameras_connection");
     db.setDatabaseName("cameras.db");
 
-    // Open the database connection
+    // Opening the database connection
     if (!db.open()) {
         qDebug() << "Error: Failed to open the database.";
     } else {
-        // Create the 'camera_logs' table if it doesn't exist
-        QSqlQuery query(db); // Pass the database connection to QSqlQuery constructor
+        // Creates the 'camera_logs' table if it doesn't exist
+        QSqlQuery query(db); // Passing the database connection to QSqlQuery constructor
         if (!query.exec("CREATE TABLE IF NOT EXISTS camera_logs ("
                         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
                         "camera_name TEXT,"
@@ -79,7 +79,7 @@ CameraHandler:: ~CameraHandler(){
 
 void CameraHandler::load_face_encodings(const std::string& folder_path)
 {
-    // Initialize Dlib face detector, shape predictor, and face recognition model
+    // Initializing Dlib face detector, shape predictor, and face recognition model
     frontal_face_detector detector = get_frontal_face_detector();
 
     // Iterate through all images in the folder
@@ -125,8 +125,7 @@ void CameraHandler::closeAllCameras()
 {
     for (auto& camera : cameras)
     {
-        camera.videoCapture.release();
-        camera.videoWriter.release();
+        CloseCamera(camera.cameraname);
     }
 
     cameras.clear();
@@ -173,17 +172,17 @@ void CameraHandler::OpenCamera(const std::string &cameraUrl, const QString &came
             newcamera.cameraname = cameraname;
             newcamera.cameraUrl = cameraUrl;
 
-            QString filePath = cameraname + ".dat";
-            if (QFile::exists(filePath)) {
-                // Ask the user if they want to reload the camera
-                QMessageBox::StandardButton reply;
-                reply = QMessageBox::question(nullptr, "Reload Camera", "A serialized file for this camera already exists. Do you want to reload the camera from the serialized file?",
-                                              QMessageBox::Yes|QMessageBox::No);
-                if (reply == QMessageBox::Yes) {
-                    // User chose not to reload, so just return
-                    deserialize(newcamera);
-                }
-            }
+            // QString filePath = cameraname + ".dat";
+            // if (QFile::exists(filePath)) {
+            //     // Ask the user if they want to reload the camera
+            //     QMessageBox::StandardButton reply;
+            //     reply = QMessageBox::question(nullptr, "Reload Camera", "A serialized file for this camera already exists. Do you want to reload the camera from the serialized file?",
+            //                                   QMessageBox::Yes|QMessageBox::No);
+            //     if (reply == QMessageBox::Yes) {
+            //         // User chose not to reload, so just return
+            //         deserialize(newcamera);
+            //     }
+            // }
 
             // Ask the user if they want to arm the camera
             QMessageBox::StandardButton reply;
@@ -335,7 +334,6 @@ void CameraHandler::reconnectCamera(CameraInfo& camera)
 {
     // Attempt to reopen the camera
     camera.videoCapture.open(camera.cameraUrl, cv::CAP_FFMPEG);
-    qDebug() << "here";
 
     // If the reconnection was successful, set the flag to false
     if (camera.videoCapture.isOpened()) {
@@ -347,6 +345,7 @@ void CameraHandler::reconnectCamera(CameraInfo& camera)
     // If all reconnection attempts failed, remove the camera
     if (camera.isError) {
         qDebug() << "Removing " << camera.cameraname << " due to disconnection";
+        CloseCamera(camera.cameraname);
         emit removeCamera(camera.cameraname);
     }
 }
@@ -400,6 +399,14 @@ cv::Mat CameraHandler::facedetection(cv::Mat frame, CameraInfo &camera) {
     // Resize the input frame to a smaller size for faster processing
     cv::Mat resizedFrame;
     cv::resize(frame, resizedFrame, cv::Size(), camera.scaleFactor, camera.scaleFactor);
+    QDateTime currentDateTime = QDateTime::currentDateTime();
+    QString formattedDateTime = currentDateTime.toString("yyyy-MM-dd hh:mm:ss.zzz");
+
+    double fontSize = 0.5 * camera.scaleFactor;
+    int thickness = static_cast<int>(1 * camera.scaleFactor);  // Adjust thickness based on scale factor
+
+    // Put the date and timestamp on the frame
+    cv::putText(resizedFrame, formattedDateTime.toStdString(), cv::Point(10, resizedFrame.rows - 10), cv::FONT_HERSHEY_SIMPLEX, fontSize, cv::Scalar(255, 255, 255), thickness);
 
     if(!camera.armed)
     {
@@ -407,7 +414,7 @@ cv::Mat CameraHandler::facedetection(cv::Mat frame, CameraInfo &camera) {
     }
 
     // Set confidence threshold
-    const double confidenceThreshold = 0.6; // Adjust this value as needed
+    const double confidenceThreshold = 0.7; // Adjust this value as needed
 
     cv::Mat frame_gray;
     cvtColor(resizedFrame, frame_gray, cv::COLOR_BGR2GRAY);
@@ -415,7 +422,7 @@ cv::Mat CameraHandler::facedetection(cv::Mat frame, CameraInfo &camera) {
     std::vector<cv::Rect> faces;
     double scaleFactor = 1.3; // Experiment with different values (e.g., 1.1, 1.2, etc.)
     int minNeighbors = 1; // Experiment with different values (e.g., 3, 5, 7, etc.)
-    int flags = 0;
+    int flags = cv::CASCADE_SCALE_IMAGE;
     faceCascade.detectMultiScale(frame_gray, faces, scaleFactor, minNeighbors, flags);
 
     bool match_found = false;
@@ -550,7 +557,7 @@ void CameraHandler::processFrame(CameraInfo& camera)
         camera.CameraRecording.append(qMakePair(currentDateTime.date(), qMakePair(newframe, currentDateTime.time())));
     }
 
-    queueSerializationTask(camera);
+    // queueSerializationTask(camera);
     emit frameUpdated(camera.latestFrame, camera.cameraname);
 }
 
@@ -841,123 +848,12 @@ void CameraHandler::add_new_face(dlib::matrix<float, 0, 1> face_encoding)
     encodings.push_back(face_encoding);
 }
 
-
-// cv::Mat CameraHandler::facedetection(cv::Mat frame, CameraInfo &camera) {
-//     // Resize the input frame to a smaller size for faster processing
-//     cv::Mat resizedFrame;
-//     cv::resize(frame, resizedFrame, cv::Size(), camera.scaleFactor, camera.scaleFactor);
-
-//     if(!camera.armed)
-//     {
-//         return resizedFrame;
-//     }
-
-//     // Set confidence threshold
-//     const double confidenceThreshold = 85.0; // Adjust this value as needed
-
-//     // Convert the resized frame to grayscale
-//     cv::Mat frame_gray;
-//     cvtColor(resizedFrame, frame_gray, cv::COLOR_BGR2GRAY);
-
-//     // Detect faces in the resized grayscale frame
-// std::vector<cv::Rect> faces;
-// double scaleFactor = 1.3; // Experiment with different values (e.g., 1.1, 1.2, etc.)
-// int minNeighbors = 1; // Experiment with different values (e.g., 3, 5, 7, etc.)
-// int flags = 0;
-// faceCascade.detectMultiScale(frame_gray, faces, scaleFactor, minNeighbors, flags);
-
-//     static int unrecognizedCount = 0;
-//     // Check the number of detected faces
-//     if (faces.empty())
-//     {
-//         if (camera.isRecording && camera.persondetected && camera.CameraRecording.length() >= camera.startFrameIndex + 100)
-//         {
-//             qDebug() << "Person has left the frame";
-//             camera.endFrameIndex = camera.CameraRecording.length()-10;
-//             qDebug() << "Start = " << camera.startFrameIndex << " End = " << camera.endFrameIndex << "Current = " << camera.CameraRecording.length();
-
-//             RecordingWorker* worker = new RecordingWorker;
-
-//             // Move the worker object to a separate thread
-//             // Create a new thread
-//             QThread* recordingThread = new QThread;
-
-//             // Move the RecordingWorker instance to the new thread
-//             worker -> moveToThread(recordingThread);
-
-//             // Call recordvideo from the new thread using lambda function
-//             QObject::connect(recordingThread, &QThread::started, [=]() {
-//                 worker -> recordvideo(camera.startFrameIndex, camera.endFrameIndex, camera.cameraname, camera.CameraRecording, db);
-//             });
-
-//             // Connect thread's finished signal to deleteLater() slot to clean up when the thread finishes
-//             QObject::connect(recordingThread, &QThread::finished, recordingThread, &QThread::deleteLater);
-
-//             // Start the thread
-//             recordingThread->start();
-
-//             // No faces detected, reset persondetected
-//             camera.persondetected = false;
-//             camera.isRecording = false;
-//             camera.cooldowntime = camera.endFrameIndex;
-//         }
-//     }
-//     else {
-//         // At least one face detected
-//         for (const cv::Rect& face : faces)
-//         {
-//             // Extract face region
-//             cv::Mat faceROI = frame_gray(face);
-
-//             // Perform face recognition
-//             int label = -1;
-//             double confidence = 0.0;
-//             recognizer->predict(faceROI, label, confidence);
-
-//             // Display recognized face label if confidence is above threshold
-//             if (label != -1 && confidence < confidenceThreshold) {
-//                 // Draw green rectangle and put recognized label
-//                 cv::rectangle(resizedFrame, face, cv::Scalar(0, 255, 0), 1);
-//             }
-//             else {
-//                 // Draw red rectangle for unknown face or low-confidence prediction
-//                 cv::rectangle(resizedFrame, face, cv::Scalar(0, 0, 255), 1);
-//                 // Save the detected face
-//                 QString filename = QString("unrecognized_face_%1.jpg").arg(unrecognizedCount);
-//                 QString filepath = QString("faces/") + filename; // Fix filepath construction
-//                 qDebug() << filename;
-//                 imwrite(filepath.toStdString(), faceROI);
-//                 unrecognizedCount++;
-//             }
-//         }
-
-//         // Print a detection message based on the number of detected faces
-//         if (faces.size() >= 1 && !camera.persondetected && !camera.isRecording)
-//         {
-//             if (camera.CameraRecording.length() - camera.cooldowntime <= 200 && camera.cooldowntime != 0)
-//             {
-
-//             }
-//             else
-//             {
-//                 QDateTime currentDateTime = QDateTime::currentDateTime();
-//                 QString formattedDateTime = currentDateTime.toString("yyyy-MM-dd hh:mm:ss.zzz");
-//                 qDebug() << "Person detected in the " << camera.cameraname << " camera at " << formattedDateTime;
-//                 camera.persondetected = true;
-//                 if (camera.CameraRecording.length() >= 100 && !camera.isRecording)
-//                 {
-//                     camera.startFrameIndex = camera.CameraRecording.length() - 100;
-//                     camera.isRecording = true;
-//                 }
-//                 else if (camera.CameraRecording.length() < 100 && !camera.isRecording)
-//                 {
-//                     camera.startFrameIndex = 0;
-//                     camera.isRecording = true;
-//                 }
-//             }
-
-//         }
-//     }
-
-//     return resizedFrame;
-// }
+void CameraHandler::delete_face(int num)
+{
+    if (num >= 0 && static_cast<size_t>(num) < encodings.size()) {
+        encodings.erase(encodings.begin() + num); // Erase element at index num
+        qDebug() << "Face Deleted!";
+    } else {
+        qDebug() << "Invalid index for deletion.";
+    }
+}

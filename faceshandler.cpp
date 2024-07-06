@@ -69,6 +69,9 @@ faceshandler::faceshandler(QWidget *parent) :
     initialize_network();
     initialize_shape_predictor();
     change_state();
+
+    // Connect the selection signal to the slot
+    connect(ui->registered_faces_tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &faceshandler::on_selection_changed);
 }
 
 faceshandler::~faceshandler()
@@ -304,6 +307,53 @@ void faceshandler::fetch_faceEncodings()
         std::memcpy(face_encoding_enc.begin(), encodingBytes.constData(), encodingBytes.size());
 
         emit add_face(face_encoding_enc);
+    }
+}
+
+void faceshandler::on_selection_changed(const QItemSelection &selected, const QItemSelection &deselected)
+{
+    // Check if any row is selected
+    if (!ui->registered_faces_tableView->selectionModel()->selectedRows().isEmpty()) {
+        ui->delete_button->setEnabled(true);
+    } else {
+        ui->delete_button->setEnabled(false);
+    }
+}
+
+void faceshandler::on_delete_button_clicked()
+{
+    QModelIndexList selectedRows = ui->registered_faces_tableView->selectionModel()->selectedRows();
+
+    if (selectedRows.isEmpty()) {
+        QMessageBox::warning(this, "Selection Error", "No row selected.");
+        return;
+    }
+
+    int selectedRow = selectedRows.first().row(); // Get the position (index) of the selected row
+    qDebug() << selectedRow;
+
+    // Confirm deletion
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Delete", "Are you sure you want to delete this entry?",
+                                  QMessageBox::Yes|QMessageBox::No);
+    if (reply == QMessageBox::Yes) {
+        // Get the ID of the selected row (assuming ID is in the first column)
+        int id = model->data(model->index(selectedRow, 0)).toInt();
+
+        // Delete the row from the database
+        QSqlQuery query(db1);
+        query.prepare("DELETE FROM face_encodings WHERE id = :id");
+        query.bindValue(":id", id);
+
+        if (!query.exec()) {
+            qDebug() << "Error deleting data from table 'face_encodings':" << query.lastError().text();
+            QMessageBox::critical(this, "Database Error", "Failed to delete the entry from the database.");
+            return;
+        }
+
+        emit delete_face(selectedRow);
+        update_table();
+        QMessageBox::information(this, "Success", "Entry deleted successfully.");
     }
 }
 

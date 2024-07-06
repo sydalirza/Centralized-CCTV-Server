@@ -62,6 +62,7 @@ void CameraScreens::initialize()
     // Connect CameraHandler's signal to handleFrameUpdate slot
     connect(&cameraHandler, &CameraHandler::frameUpdated, this, &CameraScreens::handleFrameUpdate);
     connect(this, &CameraScreens::add_new_face, &cameraHandler, &CameraHandler::add_new_face);
+    connect(this, &CameraScreens::delete_face, &cameraHandler, &CameraHandler::delete_face);
 }
 
 CameraScreens::~CameraScreens()

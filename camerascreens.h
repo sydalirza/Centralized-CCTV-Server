@@ -27,6 +27,7 @@ public:
 
 signals:
     void add_new_face(dlib::matrix<float, 0, 1> face_encoding);
+    void delete_face(int num);
 
 public slots:
     void addCamera(const QString& cameraUrl, const QString& cameraName);

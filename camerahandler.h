@@ -59,6 +59,7 @@ public:
 
 public slots:
     void add_new_face(dlib::matrix<float, 0, 1> face_encoding);
+    void delete_face(int num);
 
 signals:
     void frameUpdated(const QImage& frame, const QString& cameraname);
@@ -96,7 +97,7 @@ private:
         bool persondetected = false;
         int cooldowntime = 0;
         bool armed = false;
-        double scaleFactor = 0.07;
+        double scaleFactor = 0.3;
     };
 
     QTimer openTimer; //Camera Connection Timer

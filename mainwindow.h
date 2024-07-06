@@ -58,6 +58,8 @@ private slots:
 
     void add_new_face(dlib::matrix<float, 0, 1> face_encoding);
 
+    void delete_face(int num);
+
     void hide_close_button(int tabIndex);
 
     void on_loadfaceencodings_button_clicked();

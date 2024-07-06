@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QtSql/QSqlTableModel>
+#include <QItemSelection>
 #include "dlib_utils.h"
 #include <opencv2/opencv.hpp>
 
@@ -23,6 +24,7 @@ public:
 
 signals:
     void add_face(dlib::matrix<float, 0, 1>& face_encoding);
+    void delete_face(int num);
 
 private slots:
     void on_load_image_button_clicked();
@@ -32,6 +34,10 @@ private slots:
     void on_save_details_button_clicked();
 
     void on_update_button_clicked();
+
+    void on_delete_button_clicked();
+
+    void on_selection_changed(const QItemSelection &selected, const QItemSelection &deselected); // Add this line
 
 private:
     Ui::faceshandler *ui;

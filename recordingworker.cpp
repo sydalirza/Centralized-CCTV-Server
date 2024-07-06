@@ -21,8 +21,10 @@ void RecordingWorker::recordvideo(int startFrameindex, int endFrameindex, const 
     // Create the directory for the camera if it doesn't exist
     QString cameraDirPath = "Recordings/" + cameraname;
     QDir cameraDir(cameraDirPath);
-    if (!cameraDir.exists()) {
-        if (!cameraDir.mkpath(cameraDirPath)) {
+
+    if (!cameraDir.exists())
+    {
+        if (!cameraDir.mkpath(cameraname)) {
             qDebug() << "Error: Failed to create directory for camera: " << cameraname;
             return;
         }
@@ -70,7 +72,8 @@ void RecordingWorker::recordvideo(int startFrameindex, int endFrameindex, const 
 void RecordingWorker::recordvideo(int startFrameindex, int endFrameindex, const QString &cameraname, const QVector<QPair<QDate, QPair<Mat, QTime>>>& frameBuffer)
 {
     // Check if the frame indexes are valid
-    if (startFrameindex < 0 || endFrameindex >= frameBuffer.size() || startFrameindex > endFrameindex) {
+    if (startFrameindex < 0 || endFrameindex >= frameBuffer.size() || startFrameindex > endFrameindex)
+    {
         qDebug() << "Invalid frame indexes for recording.";
         return;
     }
@@ -99,4 +102,33 @@ void RecordingWorker::recordvideo(int startFrameindex, int endFrameindex, const 
     videoWriter.release();
 
     qDebug() << "Video recording saved: " << fileName;
+}
+
+
+void RecordingWorker::recordvideo(int startFrameindex, int endFrameindex, const QString &cameraname, const QVector<QPair<QDate, QPair<Mat, QTime>>>& frameBuffer, QString filePath)
+{
+    // Check if the frame indexes are valid
+    if (startFrameindex < 0 || endFrameindex >= frameBuffer.size() || startFrameindex > endFrameindex)
+    {
+        qDebug() << "Invalid frame indexes for recording.";
+        return;
+    }
+
+    VideoWriter videoWriter(filePath.toStdString(), VideoWriter::fourcc('m', 'p', '4', 'v'), 30, frameBuffer[startFrameindex].second.first.size());
+
+    // Check if VideoWriter is opened successfully
+    if (!videoWriter.isOpened()) {
+        qDebug() << "Error opening VideoWriter for recording.";
+        return;
+    }
+
+    // Write frames to the video file
+    for (int i = startFrameindex; i <= endFrameindex; ++i) {
+        videoWriter.write(frameBuffer[i].second.first);
+    }
+
+    // Release VideoWriter resources
+    videoWriter.release();
+
+    qDebug() << "Video recording saved: " << filePath;
 }
