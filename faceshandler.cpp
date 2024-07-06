@@ -20,7 +20,6 @@
 #include <dlib/string.h>
 #include <dlib/dnn.h>
 
-using namespace dlib;
 
 faceshandler::faceshandler(QWidget *parent) :
     QWidget(parent),
@@ -133,7 +132,7 @@ void faceshandler::on_load_image_button_clicked()
         dlib::cv_image<dlib::bgr_pixel> dlib_img(img);
 
         // Detect faces
-        frontal_face_detector detector = get_frontal_face_detector();
+        dlib::frontal_face_detector detector = dlib::get_frontal_face_detector();
         std::vector<dlib::rectangle> faces = detector(dlib_img);
 
         if (faces.empty()) {

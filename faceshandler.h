@@ -46,7 +46,7 @@ private:
 
     bool facedetected = false;
 
-    matrix<rgb_pixel> face_chip;
+    dlib::matrix<dlib::rgb_pixel> face_chip;
     cv::Mat img = cv::imread("Icons/blank_new.jpeg");
     QImage blank_img = QImage(img.data, img.cols, img.rows, img.step, QImage::Format_RGB888);
 

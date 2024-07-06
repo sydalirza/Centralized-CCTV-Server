@@ -24,7 +24,6 @@
 #include <dlib/string.h>
 #include <dlib/dnn.h>
 
-using namespace dlib;
 
 CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this)), encodings(*new std::vector<dlib::matrix<float, 0, 1>>())
 {
@@ -80,7 +79,7 @@ CameraHandler:: ~CameraHandler(){
 void CameraHandler::load_face_encodings(const std::string& folder_path)
 {
     // Initializing Dlib face detector, shape predictor, and face recognition model
-    frontal_face_detector detector = get_frontal_face_detector();
+    dlib::frontal_face_detector detector = dlib::get_frontal_face_detector();
 
     // Iterate through all images in the folder
     std::vector<cv::String> filenames;
