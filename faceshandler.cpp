@@ -7,19 +7,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QFileDialog>
-
 #include <opencv2/opencv.hpp>
-
-#include <dlib/opencv.h>
-#include <dlib/image_processing.h>
-#include <dlib/image_processing/frontal_face_detector.h>
-#include <dlib/image_processing/render_face_detections.h>
-#include <dlib/image_processing.h>
-#include <dlib/image_io.h>
-#include <dlib/clustering.h>
-#include <dlib/string.h>
-#include <dlib/dnn.h>
-
 
 faceshandler::faceshandler(QWidget *parent) :
     QWidget(parent),
@@ -51,6 +39,7 @@ faceshandler::faceshandler(QWidget *parent) :
                 age INTEGER,
                 gender TEXT,
                 encoding BLOB NOT NULL
+                image_path TEXT NOT NULL
             )
         )";
 
@@ -265,6 +254,7 @@ void faceshandler::on_save_details_button_clicked()
         }
 
         emit add_face(face_encoding);
+        update_table();
         QMessageBox::information(this, "Success", "Details saved successfully.");
 
     }
@@ -355,4 +345,3 @@ void faceshandler::on_delete_button_clicked()
         QMessageBox::information(this, "Success", "Entry deleted successfully.");
     }
 }
-

@@ -159,11 +159,13 @@ void CameraScreens::onImageClicked()
                 ui->camerastatusbutton->setStyleSheet("background-color: #ff0000");
             }
 
-            connect(ui->closecamerabutton, &QPushButton::clicked, this, [this, cameraName]() {
+            connect(ui->closecamerabutton, &QPushButton::clicked, this, [this, cameraName]()
+            {
                 removeCamera(cameraName);
             });
 
-            connect(ui->camerastatusbutton, &QPushButton::clicked, this, [this, cameraName]() {
+            connect(ui->camerastatusbutton, &QPushButton::clicked, this, [this, cameraName]()
+            {
                 changeCamerastatus(cameraName);
                 if(cameraHandler.getArmedStatus(cameraName))
                 {
@@ -177,7 +179,8 @@ void CameraScreens::onImageClicked()
                 }
             });
 
-            connect(ui->rewind_button, &QPushButton::clicked, this, [this, cameraName]() {
+            connect(ui->rewind_button, &QPushButton::clicked, this, [this, cameraName]()
+            {
 
                 if (tabWidget) {
                     int newIndex = tabWidget->addTab(new RewindUi(cameraName, cameraHandler.getFrameBuffer(cameraName), parentWidget), cameraName);
@@ -196,27 +199,32 @@ void CameraScreens::onImageClicked()
             });
 
             // Connect slider value changed signal to update camera scale factor
-            connect(ui->scale_factor_slider, &QSlider::valueChanged, this, [this, cameraName](int value) {
+            connect(ui->scale_factor_slider, &QSlider::valueChanged, this, [this, cameraName](int value)
+            {
                 on_scale_factor_slider_valueChanged(value, cameraName);
             });
         }
     }
 }
 
-void CameraScreens::onImageDoubleClicked() {
+void CameraScreens::onImageDoubleClicked()
+{
     CustomLabel* doubleClickedLabel = qobject_cast<CustomLabel*>(sender());
 
-    if (doubleClickedLabel && parentWidget && doubleClickedLabel == lastClickedLabel) {
+    if (doubleClickedLabel && parentWidget && doubleClickedLabel == lastClickedLabel)
+    {
         QString cameraName = cameraLabelMap.key(doubleClickedLabel);
         std::string singlecameraUrl = cameraHandler.getCameraUrl(cameraName);
 
-        if (cameraHandler.getCameraError(cameraName)) {
+        if (cameraHandler.getCameraError(cameraName))
+        {
             qDebug() << cameraName << " is disconnected";
             return;
         }
 
 
-        if (tabWidget) {
+        if (tabWidget)
+        {
             int newIndex = tabWidget->addTab(new FocusView(tabWidget, cameraName, singlecameraUrl, cameraHandler.getScalefactor(cameraName)), cameraName);
             tabWidget->setCurrentIndex(newIndex);
             QTabBar* tabBar = tabWidget->findChild<QTabBar*>();
@@ -237,19 +245,23 @@ void CameraScreens::onImageDoubleClicked() {
 void CameraScreens::handleFrameUpdate(const QImage& frame, const QString& cameraName)
 {
     // Update the label with the new frame or set it to a black pixmap if it's an error frame
-    if (cameraLabelMap.contains(cameraName)) {
+    if (cameraLabelMap.contains(cameraName))
+    {
         CustomLabel* label = cameraLabelMap.value(cameraName);
 
-        if (label) {
+        if (label)
+        {
             // Check if the frame has an error
-            if (cameraHandler.getCameraError(cameraName)) {
+            if (cameraHandler.getCameraError(cameraName))
+            {
                 // Create a black image
                 QImage errorImage("loading.png"); //Camera gets disconnected
 
                 // Set the label pixmap with the black image
                 label->setPixmap(QPixmap::fromImage(errorImage));
 
-            } else {
+            } else
+            {
                 // Set the label pixmap with the received frame
                 label->setPixmap(QPixmap::fromImage(frame));
             }
@@ -263,7 +275,6 @@ void CameraScreens::handleFrameUpdate(const QImage& frame, const QString& camera
 
 void CameraScreens::addCameraLabel(const QString& cameraName, int total_screens, int i)
 {
-
     // Determine the number of columns based on the total number of screens
     int columns = (total_screens > 4) ? 4 : 2;
 
@@ -275,11 +286,13 @@ void CameraScreens::addCameraLabel(const QString& cameraName, int total_screens,
     blackPixmap.fill(Qt::black);
 
 
-    if (i < cameraHandler.getNumberOfConnectedCameras()) {
+    if (i < cameraHandler.getNumberOfConnectedCameras())
+    {
         // Connected camera: Set the pixmap
         imageLabel->setPixmap(defaultPixmap.scaled(540, 330, Qt::IgnoreAspectRatio));
     }
-    else {
+    else
+    {
         // Not connected camera: Set a black background
         imageLabel->setPixmap(blackPixmap);
     }
@@ -302,10 +315,10 @@ void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_s
     ui->rewind_button->setEnabled(false);
     ui->camerastatusbutton->setEnabled(false);
 
-
     // Clear existing widgets in the layout
     QLayoutItem* child;
-    while ((child = ui->camera_viewer->takeAt(0)) != nullptr) {
+    while ((child = ui->camera_viewer->takeAt(0)) != nullptr)
+    {
         delete child->widget();
         delete child;
     }
@@ -326,22 +339,23 @@ void CameraScreens::updateCameraLayout(int numberOfConnectedCameras, int total_s
 
     // Load QLabel widgets for connected cameras
     int boxNumber = 1;
-    for (int i = 0; i < total_screens; ++i) {
-        if (i < numberOfConnectedCameras) {
+    for (int i = 0; i < total_screens; ++i)
+    {
+        if (i < numberOfConnectedCameras)
+        {
             const QString cameraName = cameraHandler.getCameraName(i);
             addCameraLabel(cameraName, total_screens, i);
             ++boxNumber;
         }
-        else {
+        else
+        {
             // Handle the case when total_screens > numberOfConnectedCameras
             const QString cameraName = "Not Connected " + QString::number(i - numberOfConnectedCameras + 1);
             addCameraLabel(cameraName, total_screens, i);
             ++boxNumber;
         }
     }
-
 }
-
 
 void CameraScreens::connectCameras()
 {
@@ -369,7 +383,6 @@ void CameraScreens::addCamera(const QString& cameraUrl, const QString& cameraNam
     cameraHandler.OpenCamera(cameraUrl.toStdString(), cameraName);
     handleCameraOpened();
 }
-
 
 void CameraScreens::removeCamera(const QString& cameraName)
 {
@@ -412,7 +425,7 @@ void CameraScreens::changeCamerastatus(const QString& cameraName)
 
 void CameraScreens::on_scale_factor_slider_valueChanged(int value, const QString &cameraName)
 {
-    double scaleFactor = static_cast<double>(value) / 100.0; // Convert the slider value to a double between 0.01 and 1
+    double scaleFactor = static_cast<double>(value) / 100.0; // Convert the slider value to a double between 0.01 and 0.99
     // Convert scaleFactor to QString
     QString scaleFactorString = QString::number(value, 'f',0);
     ui->scale_factor_label->setText(scaleFactorString);
@@ -431,7 +444,7 @@ void CameraScreens::handleTabCloseRequested(int index)
                     return;
                 }
                 tabWidget->removeTab(index);
-                delete widget; // Then delete the widget to free up memory
+                delete widget; // then delete the widget to free up memory
             }
         }
     } else {

@@ -14,17 +14,6 @@
 #include <QSqlQuery>
 #include <QSqlError>
 
-#include <dlib/opencv.h>
-#include <dlib/image_processing.h>
-#include <dlib/image_processing/frontal_face_detector.h>
-#include <dlib/image_processing/render_face_detections.h>
-#include <dlib/image_processing.h>
-#include <dlib/image_io.h>
-#include <dlib/clustering.h>
-#include <dlib/string.h>
-#include <dlib/dnn.h>
-
-
 CameraHandler:: CameraHandler(QObject *parent) : QObject(parent), timer(new QTimer(this)), encodings(*new std::vector<dlib::matrix<float, 0, 1>>())
 {
     connect(timer, &QTimer::timeout, this, &CameraHandler::updateFrames);
@@ -195,7 +184,6 @@ void CameraHandler::OpenCamera(const std::string &cameraUrl, const QString &came
 
             cameras.push_back(newcamera);
 
-            // initializeVideoWriter(cameraname);
         }
     });
 
@@ -413,7 +401,7 @@ cv::Mat CameraHandler::facedetection(cv::Mat frame, CameraInfo &camera) {
     }
 
     // Set confidence threshold
-    const double confidenceThreshold = 0.7; // Adjust this value as needed
+    const double confidenceThreshold = 0.55; // Adjust this value as needed
 
     cv::Mat frame_gray;
     cvtColor(resizedFrame, frame_gray, cv::COLOR_BGR2GRAY);

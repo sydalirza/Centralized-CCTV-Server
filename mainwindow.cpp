@@ -362,4 +362,3 @@ void MainWindow::on_loadfaceencodings_button_clicked()
     facesHandlerInstance -> fetch_faceEncodings();
     ui->loadfaceencodings_button->setEnabled(false);
 }
-

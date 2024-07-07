@@ -6,9 +6,6 @@
 #include <QtSql/QSqlTableModel>
 #include <QMessageBox>
 #include <QDesktopServices>
-#include <dlib/opencv.h>
-#include <dlib/image_processing/frontal_face_detector.h>
-#include <dlib/image_processing.h>
 
 
 CameraSettings::CameraSettings(QWidget *parent)

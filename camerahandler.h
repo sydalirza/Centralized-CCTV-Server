@@ -28,9 +28,6 @@
 #include <dlib/string.h>
 #include <dlib/dnn.h>
 
-// using namespace cv::face;
-// using namespace cv;
-
 class CameraHandler: public QObject
 {
     Q_OBJECT
