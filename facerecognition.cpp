@@ -1,7 +1,8 @@
 #include "facerecognition.h"
-
+#include <opencv2/face.hpp>
 
 using namespace cv;
+using namespace cv::face;
 using namespace std;
 
 FaceRecognition::FaceRecognition(QObject *parent) : QObject(parent) {
@@ -26,6 +27,7 @@ void FaceRecognition::processFrame(const QImage &frame, const QString &cameraNam
 
     // Convert cv::Mat back to QImage
     QImage frameWithFacesImage = MatToQImage(frameWithFaces);
+
 
     // Emit signal with the frame containing faces
     emit faceDetected(frameWithFacesImage, cameraName);

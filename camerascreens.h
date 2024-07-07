@@ -3,12 +3,10 @@
 
 #include <QWidget>
 #include <QMessageBox>
+#include <QTabWidget>
 #include "customlabel.h"
-#include "singleviewwidget.h"
-#include "focusview.h"
 #include "camerahandler.h"
 #include "camerasettings.h"
-#include "rewindui.h"
 
 namespace Ui {
 class CameraScreens;
@@ -20,31 +18,29 @@ class CameraScreens : public QWidget
     static const int MAX_RECONNECT_ATTEMPTS = 3;
 
 
+
 public:
-    explicit CameraScreens(QWidget *parent = nullptr, QWidget *parentWidget = nullptr);
+    explicit CameraScreens(QWidget *parent = nullptr, QWidget *parentWidget = nullptr, const std::vector<std::pair<QString, QString>> &cameras = {});
 
     void connectCameras();
     ~CameraScreens();
 
+signals:
+    void add_new_face(dlib::matrix<float, 0, 1> face_encoding);
+    void delete_face(int num);
+
 public slots:
     void addCamera(const QString& cameraUrl, const QString& cameraName);
     void removeCamera(const QString& cameraName);
+    void on_one_camera_clicked();
+    void on_four_camera_clicked();
+    void on_sixteen_camera_clicked();
 
 private slots:
-
-    void on_one_camera_clicked();
-
-    void on_four_camera_clicked();
-
-    void on_sixteen_camera_clicked();
 
     void onImageClicked();
 
     void onImageDoubleClicked();
-
-    void onNextClicked();
-
-    void onPreviousClicked();
 
     void handleFrameUpdate(const QImage &frame, const QString &cameraname);
 
@@ -56,10 +52,16 @@ private slots:
 
     void handleCameraOpeningFailed(const QString &cameraName);
 
+    void changeCamerastatus(const QString &cameraName);
+
+    void on_scale_factor_slider_valueChanged(int value, const QString &cameraName);
+
+    void handleTabCloseRequested(int index);
 
 private:
     Ui::CameraScreens *ui;
     QTimer *timer;
+    QTabWidget* tabWidget;
 
     // Function to dynamically update the camera layout based on the number of connected cameras
     void updateCameraLayout(int numberOfConnectedCameras, int total_screens);
@@ -70,24 +72,18 @@ private:
     CustomLabel* lastClickedLabel = nullptr;
     CustomLabel *selectedLabel;
 
-    SingleViewWidget *singleViewWidget = nullptr;
-    FocusView *focusView = nullptr;
-    RewindUi *RewindUI = nullptr;
-
     QWidget* parentWidget;
 
     int totalWalls = 1; // Set an initial value, adjust as needed
     int currentWall = 16; // Set an initial value, adjust as needed
     int camerasPerWall = 16; // Set an initial value, adjust as needed
 
+    const std::vector<std::pair<QString, QString>> cameras;
     QVector<QLabel*> cameraLabels;  // Keep track of the QLabel widgets
     CameraHandler cameraHandler;    // Instance of CameraHandler
     CameraSettings cameraSettings;
     QMap<QString, CustomLabel*> cameraLabelMap;
-    QMap<QString, SingleViewWidget*> cameraSingleViewWidgets;
-
     void addCameraLabel(const QString &cameraname, int total_screens, int i);
-    void showLayoutButtons(int numberOfConnectedCameras);
 };
 
 #endif // CAMERASCREENS_H

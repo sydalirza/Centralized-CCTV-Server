@@ -6,6 +6,7 @@
 #include <QImage>
 #include <QTime>
 #include <QThread>
+#include <QTimer>
 #include <opencv2/opencv.hpp>
 #include "recordingworker.h"
 
@@ -36,6 +37,8 @@ private slots:
 
     void on_date_currentIndexChanged(int index);
 
+    void on_cancel_recording_clicked();
+
 private:
     Ui::RewindUi* ui;
     bool isPlaying;
@@ -44,6 +47,7 @@ private:
     QVector<QPair<QDate, QPair<Mat, QTime>>> frameBuffer;
     QString cameraname;
 
+    void updateFrame();
     void updateUIFromFrame(int frameIndex);
     void saveRecording(int startFrameindex, int endFrameindex);
     void disableeverything();
@@ -57,6 +61,8 @@ private:
 
     QThread workerThread;
     RecordingWorker recordWorker;
+
+    QTimer *playbackTimer;
 };
 
 #endif // REWINDUI_H

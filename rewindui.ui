@@ -74,6 +74,13 @@
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QPushButton" name="cancel_recording">
+            <property name="text">
+             <string>Cancel Recording</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </item>
         <item>
@@ -132,28 +139,28 @@
           <item>
            <widget class="QPushButton" name="goto_start">
             <property name="text">
-             <string>&lt;&lt;</string>
+             <string/>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QPushButton" name="play_button">
             <property name="text">
-             <string>Play</string>
+             <string/>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QPushButton" name="pause_button">
             <property name="text">
-             <string>Pause</string>
+             <string/>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QPushButton" name="goto_end">
             <property name="text">
-             <string>&gt;&gt;</string>
+             <string/>
             </property>
            </widget>
           </item>
