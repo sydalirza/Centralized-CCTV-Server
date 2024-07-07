@@ -18,17 +18,17 @@ void RecordingWorker::recordvideo(int startFrameindex, int endFrameindex, const 
         return;
     }
 
-    // Create the directory for the camera if it doesn't exist
-    QString cameraDirPath = "Recordings/" + cameraname;
-    QDir cameraDir(cameraDirPath);
+    // // Create the directory for the camera if it doesn't exist
+    // QString cameraDirPath = "Recordings/" + cameraname;
+    // QDir cameraDir(cameraDirPath);
 
-    if (!cameraDir.exists())
-    {
-        if (!cameraDir.mkpath(cameraname)) {
-            qDebug() << "Error: Failed to create directory for camera: " << cameraname;
-            return;
-        }
-    }
+    // if (!cameraDir.exists())
+    // {
+    //     if (!cameraDir.mkpath(cameraname)) {
+    //         qDebug() << "Error: Failed to create directory for camera: " << cameraname;
+    //         return;
+    //     }
+    // }
 
     // Create VideoWriter object
     QString fileName = QString("%1_%2_%3_%4.mp4")
@@ -37,9 +37,9 @@ void RecordingWorker::recordvideo(int startFrameindex, int endFrameindex, const 
                            .arg(frameBuffer[startFrameindex].second.second.toString("hhmmss"))
                            .arg(frameBuffer[endFrameindex].second.second.toString("hhmmss"));
 
-    QString filePath = cameraDirPath + "/" + fileName;
+    QString filePath = "C:/FYPPublish/FYPPublish/wwwroot/Anomaly/" + fileName;
 
-    VideoWriter videoWriter(filePath.toStdString(), VideoWriter::fourcc('m', 'p', '4', 'v'), 30, frameBuffer[startFrameindex].second.first.size());
+    VideoWriter videoWriter(filePath.toStdString(), VideoWriter::fourcc('a', 'v', 'c', '1'), 30, frameBuffer[startFrameindex].second.first.size());
 
     // Check if VideoWriter is opened successfully
     if (!videoWriter.isOpened()) {
